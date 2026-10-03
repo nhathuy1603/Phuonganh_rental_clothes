@@ -1,0 +1,40 @@
+import { useRef, useState, type ChangeEvent } from 'react'
+
+interface CheckoutFormProps {
+  onSubmit: (name: string, phone: string, depositType: 'Tiền mặt' | 'CCCD') => void
+}
+
+/**
+ * Port của renderCheckoutForm() + phần đọc input của submitCheckout() gốc.
+ * Bản gốc đọc giá trị input qua document.getElementById(...).value lúc bấm nút;
+ * ở đây dùng uncontrolled input (useRef) để giữ đúng hành vi đó mà không phải
+ * validate theo từng phím gõ.
+ */
+export default function CheckoutForm({ onSubmit }: CheckoutFormProps) {
+  const nameRef = useRef<HTMLInputElement>(null)
+  const phoneRef = useRef<HTMLInputElement>(null)
+  const [depositType, setDepositType] = useState<'Tiền mặt' | 'CCCD'>('Tiền mặt')
+
+  const handleSubmit = () => {
+    const name = (nameRef.current?.value || '').trim()
+    const phone = (phoneRef.current?.value || '').trim()
+    onSubmit(name, phone, depositType)
+  }
+
+  return (
+    <div className="checkout-form" style={{ padding: 0 }}>
+      <label>Họ và tên</label>
+      <input type="text" ref={nameRef} placeholder="Nguyễn Văn A" />
+      <label>Số điện thoại</label>
+      <input type="tel" ref={phoneRef} placeholder="09xxxxxxxx" />
+      <label>Hình thức đặt cọc</label>
+      <select value={depositType} onChange={(e: ChangeEvent<HTMLSelectElement>) => setDepositType(e.target.value as 'Tiền mặt' | 'CCCD')}>
+        <option value="Tiền mặt">Tiền mặt tại cửa hàng</option>
+        <option value="CCCD">Giữ CCCD bản gốc</option>
+      </select>
+      <button className="btn btn-primary btn-block" style={{ marginTop: '6px' }} onClick={handleSubmit}>
+        Xác nhận đặt thuê
+      </button>
+    </div>
+  )
+}

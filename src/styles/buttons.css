@@ -1,0 +1,20 @@
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px 22px;border-radius:var(--radius);border:1px solid transparent;
+  font-size:14px;font-weight:600;letter-spacing:.01em;transition:transform .15s ease, background .15s ease;
+}
+.btn:active{transform:scale(.98);}
+.btn-primary{background:var(--plum);color:#fff;}
+.btn-primary:hover{background:var(--plum-2);}
+.btn-primary:disabled{background:var(--line);color:var(--ink-soft);cursor:not-allowed;}
+.btn-gold{background:var(--gold);color:#fff;}
+.btn-gold:hover{background:#9C7233;}
+.btn-ghost{background:transparent;border-color:var(--line);color:var(--ink);}
+.btn-ghost:hover{border-color:var(--plum);}
+.btn-sm{padding:7px 14px;font-size:12.5px;}
+.btn-danger{background:transparent;color:var(--rust);border-color:var(--rust-bg);}
+.btn-danger:hover{background:var(--rust-bg);}
+.btn-block{width:100%;}
+.link-btn{background:none;border:none;padding:0;color:var(--accent-text);font-weight:600;text-decoration:underline;text-underline-offset:3px;}
+

@@ -1,0 +1,12 @@
+/* ---------- Auth pages (login / signup) ---------- */
+.auth-wrap{display:flex;justify-content:center;padding-top:56px;padding-bottom:90px;}
+.auth-card{width:100%;max-width:420px;background:var(--white);border:1px solid var(--line);border-radius:var(--radius-lg);padding:38px 34px;box-shadow:0 20px 44px -26px rgba(24,26,24,.22);}
+.auth-switch{text-align:center;font-size:12.5px;color:var(--ink-soft);margin:18px 0 0;}
+.auth-switch a{color:var(--accent-text);font-weight:700;text-decoration:underline;text-underline-offset:3px;}
+
+/* ---------- Admin login gate ---------- */
+.admin-login-wrap{min-height:100vh;background:var(--chrome);display:flex;align-items:center;justify-content:center;padding:24px;}
+.admin-login-card{width:100%;max-width:380px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:var(--radius-lg);padding:38px 32px;}
+.admin-login-card input{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.18);color:#fff;}
+.admin-login-card ::placeholder{color:#7A6C76;}
+

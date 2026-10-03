@@ -1,0 +1,64 @@
+@media(max-width:900px){
+  .hero{padding:36px 0 24px;}
+  .hero-grid{grid-template-columns:1fr;gap:32px;}
+  .hero h1{font-size:36px;}
+  .hero-art{min-height:260px;padding:20px;}
+  .hero-stats{flex-wrap:wrap;gap:20px;}
+  .pd-grid{grid-template-columns:1fr;}
+  .site-footer .wrap{grid-template-columns:1fr;gap:28px;}
+  .site-header .wrap{height:64px;}
+  .hamburger-btn{display:flex;}
+  .main-nav{display:none;}
+  .header-theme-toggle{display:none;}
+  .admin-link-header{display:none;}
+  .header-actions{gap:8px;}
+  .logo{font-size:19px;}
+  .admin-side{position:fixed;left:-280px;top:0;transition:left .2s;z-index:60;height:100%;}
+  .admin-side.open{left:0;}
+  .admin-sidebar-backdrop.open{display:block;background:rgba(24,26,24,.45);z-index:55;}
+  .admin-hamburger{display:inline-flex;}
+  .admin-main{max-width:100%;padding:18px 14px 50px;}
+  .form-grid{grid-template-columns:1fr;}
+  .contact-grid{grid-template-columns:1fr;}
+  .makeup-detail-hero{grid-template-columns:1fr;gap:22px;}
+  .makeup-hero-figure{min-height:260px;}
+  .makeup-info-row{flex-direction:column;gap:12px;margin-bottom:16px;}
+  .makeup-info-row b{font-size:17px;}
+  .makeup-highlights li{font-size:13px;}
+  .makeup-cta-band{flex-direction:column;align-items:flex-start;padding:22px 18px;}
+  .makeup-service-grid{grid-template-columns:1fr;gap:16px;}
+  .makeup-service-figure{height:220px;}
+  .makeup-service-body{padding:16px;}
+  .makeup-service-body h3{font-size:18px;}
+  .section-title{flex-direction:column;align-items:flex-start;gap:6px;}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;}
+  .review-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));}
+  .diff-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));}
+  .stat-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));}
+  .cart-drawer, .mobile-nav-drawer{max-width:90vw;}
+  .auth-card{padding:28px 22px;}
+  .mega-panel{padding:18px 16px;grid-template-columns:1fr;max-height:70vh;overflow:auto;}
+  .modal{max-width:95vw;}
+  .makeup-booking-form-shell{padding:18px 16px;}
+  .makeup-booking-form-shell > div{grid-template-columns:1fr !important;}
+  .cal-cell{min-height:64px;padding:4px 5px;}
+  .cal-chip{font-size:9px;}
+}
+
+@media(max-width:480px){
+  .hero h1{font-size:29px;}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+  .p-name{font-size:15px;}
+  .admin-top{flex-direction:column;align-items:flex-start;}
+  .tiny-admin-link{padding:6px 9px;font-size:11px;}
+  .makeup-detail-hero{padding-top:10px;}
+  .makeup-hero-figure{min-height:210px;border-radius:14px;}
+  .makeup-service-figure{height:180px;}
+  .makeup-service-body p, .makeup-service-body ul{font-size:12px;}
+  .makeup-booking-form-shell{padding:14px 12px;}
+  .makeup-booking-form-shell label{font-size:10.5px;}
+  .makeup-booking-form-shell .btn{width:100%;}
+  .cal-grid{gap:3px;}
+  .cal-cell{min-height:50px;}
+  .cal-chip, .cal-more{display:none;}
+}

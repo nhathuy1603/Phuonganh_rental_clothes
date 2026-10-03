@@ -1,0 +1,44 @@
+/* ---------- Makeup services (customer) ---------- */
+.makeup-figure{background:var(--makeup-bg);}
+.makeup-detail-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding-top:20px;padding-bottom:10px;}
+.makeup-hero-figure{background:linear-gradient(155deg,var(--makeup-bg),var(--paper-2));border-radius:var(--radius-lg);min-height:320px;display:flex;align-items:center;justify-content:center;}
+.makeup-info-row{display:flex;gap:28px;margin-bottom:20px;}
+.makeup-info-row div{display:flex;flex-direction:column;gap:2px;}
+.makeup-info-row span{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+.makeup-info-row b{font-family:'Fraunces',serif;font-size:18px;}
+.makeup-highlights{list-style:none;margin:0 0 26px;padding:0;display:flex;flex-direction:column;gap:9px;}
+.makeup-highlights li{font-size:13px;color:var(--ink);}
+.makeup-book-btn{background:var(--makeup);}
+.makeup-book-btn:hover{background:var(--makeup-2);}
+.makeup-booking-error{padding:10px 12px;border:1px solid var(--rust-bg);border-radius:6px;background:var(--rust-bg);color:var(--rust);font-size:12.5px;font-weight:600;line-height:1.5;}
+.makeup-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px;margin-bottom:8px;}
+.makeup-gallery-item{aspect-ratio:4/5;border-radius:10px;overflow:hidden;background:var(--makeup-bg);display:flex;align-items:center;justify-content:center;}
+.makeup-gallery-item img{width:100%;height:100%;object-fit:cover;}
+.makeup-gallery-placeholder span{font-size:40px;opacity:.6;}
+.makeup-cta-band{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;background:linear-gradient(155deg,var(--makeup-bg),var(--paper-2));border-radius:var(--radius-lg);padding:28px 34px;}
+
+.makeup-service-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;}
+.makeup-service-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;display:flex;flex-direction:column;min-height:100%;}
+.makeup-service-figure{background:linear-gradient(155deg,var(--makeup-bg),var(--paper-2));height:190px;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:52px;}
+.makeup-service-figure img{width:100%;height:100%;object-fit:cover;display:block;}
+.makeup-service-body{padding:18px 18px 20px;display:flex;flex-direction:column;gap:12px;flex:1;}
+.makeup-service-topline{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.makeup-service-emoji{font-size:26px;}
+.makeup-service-price{font-weight:700;color:var(--makeup-text);font-size:13px;}
+.makeup-service-body h3{margin:0;font-size:20px;line-height:1.25;}
+.makeup-service-body p{margin:0;color:var(--ink-soft);line-height:1.55;}
+.makeup-service-body ul{margin:0;padding-left:18px;color:var(--ink);display:grid;gap:6px;font-size:12.5px;}
+
+/* ---------- Makeup calendar (admin) ---------- */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+.cal-dow{text-align:center;font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;padding-bottom:6px;}
+.cal-cell{min-height:84px;border:1px solid var(--line);border-radius:8px;padding:6px 7px;display:flex;flex-direction:column;gap:3px;cursor:pointer;transition:border-color .15s ease, background .15s ease;background:var(--white);}
+.cal-cell:hover{border-color:var(--makeup);}
+.cal-cell-empty{border:none;background:transparent;cursor:default;}
+.cal-cell.has-bookings{background:var(--makeup-bg);border-color:var(--makeup);}
+.cal-cell.is-today .cal-daynum{background:var(--plum);color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;}
+.cal-cell.is-selected{box-shadow:0 0 0 2px var(--makeup);}
+.cal-daynum{font-size:12px;font-weight:700;color:var(--ink);}
+.cal-chip{font-size:10px;font-weight:600;background:var(--makeup);color:#fff;border-radius:4px;padding:2px 5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.cal-more{font-size:10px;color:var(--ink-soft);font-weight:600;}
+

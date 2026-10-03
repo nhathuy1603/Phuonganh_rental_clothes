@@ -1,0 +1,50 @@
+/* ---------- Scroll-reveal animation ---------- */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease, transform .6s ease;}
+.reveal.in-view{opacity:1;transform:translateY(0);}
+
+
+/* ---------- General interaction polish ---------- */
+button{cursor:pointer;}
+.btn{transition:transform .15s ease, background .15s ease, box-shadow .15s ease;}
+.btn:hover{transform:translateY(-1px);box-shadow:0 8px 16px -10px rgba(24,26,24,.35);}
+.btn:active{transform:scale(.98);}
+.cat-chip{transition:transform .15s ease, background .15s ease, border-color .15s ease;cursor:pointer;}
+.cat-chip:hover{border-color:var(--plum);background:var(--paper-2);transform:translateY(-1px);}
+.opt-btn{transition:border-color .15s ease, background .15s ease;cursor:pointer;}
+.opt-btn:hover{border-color:var(--plum);}
+.swatch-dot{transition:transform .15s ease;}
+.swatch-dot:hover{transform:scale(1.18);}
+.nav-pill{cursor:pointer;}
+.link-btn{transition:opacity .15s ease;}
+.link-btn:hover{opacity:.7;}
+
+/* Customer motion cues */
+.hero{position:relative;}
+.hero-grid>div:first-child>*{animation:hero-copy-in .65s both;}
+.hero-grid>div:first-child>.eyebrow-plain{animation-delay:.04s;}
+.hero-grid>div:first-child>h1{animation-delay:.1s;}
+.hero-grid>div:first-child>p{animation-delay:.16s;}
+.hero-grid>div:first-child>.hero-cta{animation-delay:.22s;}
+.hero-grid>div:first-child>.hero-stats{animation-delay:.28s;}
+.hero-art{animation:hero-art-in .8s .12s both;}
+.hero-scroll-cue{display:flex;justify-content:center;margin-top:22px;}
+.hero-scroll-mouse{position:relative;display:flex;justify-content:center;width:20px;height:32px;border:1.5px solid var(--ink-soft);border-radius:12px;opacity:.72;}
+.hero-scroll-mouse span{width:3px;height:6px;margin-top:6px;border-radius:3px;background:var(--accent-text);animation:scroll-wheel 1.5s ease-in-out infinite;}
+.p-figure img,.p-figure svg{transition:transform .45s cubic-bezier(.2,.7,.25,1);}
+.makeup-service-card{transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;}
+.makeup-service-figure img{transition:transform .5s cubic-bezier(.2,.7,.25,1);}
+.review-photo svg{transition:transform .35s ease;}
+@media(hover:hover){
+	.p-card:hover .p-figure img,.p-card:hover .p-figure svg{transform:scale(1.035);}
+	.makeup-service-card:hover{transform:translateY(-3px);border-color:var(--makeup);box-shadow:0 14px 28px -20px rgba(24,26,24,.32);}
+	.makeup-service-card:hover .makeup-service-figure img{transform:scale(1.035);}
+	.review-card:hover .review-photo svg{transform:scale(1.045);}
+}
+@keyframes hero-copy-in{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+@keyframes hero-art-in{from{opacity:0;transform:translateY(8px) scale(.985);}to{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes scroll-wheel{0%{opacity:0;transform:translateY(0);}25%{opacity:1;}75%{opacity:1;}100%{opacity:0;transform:translateY(9px);}}
+:focus-visible{outline:2px solid var(--accent-text);outline-offset:3px;}
+@media(prefers-reduced-motion:reduce){
+	*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}
+	.reveal,.hero-grid>div:first-child>*,.hero-art{opacity:1;transform:none;}
+}
