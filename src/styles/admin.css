@@ -293,6 +293,9 @@ tbody tr:hover{background:var(--paper);}
 	.admin-category-row .admin-category-count{grid-column:1;}
 	.admin-category-row .admin-delete-button{grid-column:2;grid-row:2;}
 	.admin-category-group-name input{min-width:0;max-width:68vw;}
+	.admin-row-actions,.admin-product-actions{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:6px;white-space:normal;}
+	.admin-row-actions .admin-text-button,.admin-row-actions .admin-delete-button,.admin-product-actions .admin-text-button,.admin-product-actions .admin-delete-button,.admin-product-actions .admin-icon-action{min-height:32px;}
+	.admin-product-row-name{min-width:0;}
 	.admin-rental-detail-head{padding:20px 18px 16px;}
 	.admin-rental-detail-grid{padding:4px 18px 16px;}
 	.admin-rental-detail-actions{padding:14px 18px 18px;}
@@ -341,9 +344,11 @@ tbody tr:hover{background:var(--paper);}
 	.admin-rental-detail-grid{padding:2px 18px 10px;}
 	.admin-rental-detail-grid dl{grid-template-columns:minmax(90px,.7fr) 1.3fr;gap:7px 10px;font-size:11.5px;}
 	.admin-rental-detail-actions{align-items:stretch;flex-direction:column-reverse;}
-	.admin-rental-detail-actions>div{justify-content:flex-end;}
+	.admin-rental-detail-actions>div{justify-content:flex-end;flex-wrap:wrap;}
 	.admin-product-detail-info{grid-template-columns:1fr 1fr;}
 	.admin-product-detail-info>div:last-child{grid-column:1/-1;}
 	.admin-product-detail-actions{align-items:stretch;flex-direction:column-reverse;}
-	.admin-product-detail-actions>div{justify-content:flex-end;}
+	.admin-product-detail-actions>div{justify-content:flex-end;flex-wrap:wrap;}
+	.admin-row-actions,.admin-product-actions{justify-content:flex-end;}
+	.admin-product-actions .admin-icon-action{width:32px;height:32px;}
 }
