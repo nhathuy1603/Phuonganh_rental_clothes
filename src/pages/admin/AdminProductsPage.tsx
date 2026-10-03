@@ -24,6 +24,7 @@ const productIcons: Array<{ id: Product['icon']; label: string }> = [
 ]
 
 const palette = ['#7A2233', '#22314F', '#5C8C82', '#B4863C', '#6B6660', '#8C2A2A', '#C9A85C', '#D9AFAE']
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
 
 function emptyVariant(): ProductVariant {
   return { id: `variant-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`, size: '', color: '', total: 1, renting: 0, cleaning: 0, repair: 0 }
@@ -148,10 +149,20 @@ export default function AdminProductsPage({ products, categories, onCreate, onUp
     const files = Array.from(event.target.files ?? [])
     event.target.value = ''
     if (files.length === 0) return
+
+    const oversizedFiles = files.filter((file) => file.size > MAX_IMAGE_SIZE_BYTES)
+    const validFiles = files.filter((file) => file.size <= MAX_IMAGE_SIZE_BYTES)
+
+    if (oversizedFiles.length > 0) {
+      setImageError(`Ảnh vượt quá 5MB: ${oversizedFiles.map((file) => file.name).join(', ')}. Vui lòng chọn ảnh nhỏ hơn 5MB.`)
+    }
+
+    if (validFiles.length === 0) return
+
     try {
-      const images = await Promise.all(files.map(resizeImage))
+      const images = await Promise.all(validFiles.map(resizeImage))
       setDraft((current) => ({ ...current, images: [...current.images, ...images] }))
-      setImageError(null)
+      setImageError((current) => current && oversizedFiles.length > 0 ? current : null)
     } catch (error) {
       setImageError(error instanceof Error ? error.message : 'Không thể tải ảnh.')
     }
