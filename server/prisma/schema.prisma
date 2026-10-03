@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model CategoryGroup {
+  id         Int        @id @default(autoincrement())
+  name       String     @unique
+  sortOrder  Int        @default(0)
+  categories Category[]
+}
+
+model Category {
+  id        String         @id @default(cuid())
+  name      String         @unique
+  groupId   Int
+  sortOrder Int            @default(0)
+  group     CategoryGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  products  Product[]
+
+  @@index([groupId, sortOrder])
+}
+
+model Product {
+  id          String           @id @default(cuid())
+  name        String
+  categoryId  String
+  icon        String
+  pricePerDay Int
+  deposit     Int
+  depositNote String
+  desc        String
+  colorHex    Json
+  images      String[]         @default([])
+  videoUrl    String           @default("")
+  category    Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  variants    ProductVariant[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([categoryId])
+}
+
+model ProductVariant {
+  id       String  @id @default(cuid())
+  productId String
+  size     String
+  color    String
+  total    Int     @default(0)
+  renting  Int     @default(0)
+  cleaning Int     @default(0)
+  repair   Int     @default(0)
+  product  Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model RentalBooking {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  customer        String
+  phone           String
+  productId       String
+  variantId       String
+  orderDate       String
+  pickupDate      String
+  dueDate         String
+  returnDate      String?
+  days            Int
+  pricePerDay     Int
+  rentalTotal     Int
+  depositType     String
+  depositAmount   Int
+  depositRefunded Boolean  @default(false)
+  lateFee         Int      @default(0)
+  status          String   @default("Đặt trước")
+  paid            Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status, pickupDate, dueDate])
+}
+
+model MakeupService {
+  id         String   @id @default(cuid())
+  emoji      String
+  name       String
+  tagline    String
+  desc       String
+  priceFrom  Int
+  duration   String
+  highlights String[] @default([])
+  images     String[] @default([])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model MakeupAppointment {
+  id              String   @id @default(cuid())
+  customer        String
+  phone           String
+  serviceId       String
+  date            String
+  time            String
+  notes           String   @default("")
+  amount          Int
+  depositAmount   Int      @default(0)
+  depositRefunded Boolean  @default(false)
+  lateFee         Int      @default(0)
+  paid            Boolean  @default(false)
+  status          String   @default("Chờ xác nhận")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([date, time])
+}

@@ -3,8 +3,8 @@ import type { MakeupCategory } from '../../types/catalog'
 
 interface AdminMakeupServicesPageProps {
   services: MakeupCategory[]
-  onCreate: (service: Omit<MakeupCategory, 'id'>) => void
-  onUpdate: (id: string, service: Omit<MakeupCategory, 'id'>) => void
+  onCreate: (service: Omit<MakeupCategory, 'id'>) => Promise<void>
+  onUpdate: (id: string, service: Omit<MakeupCategory, 'id'>) => Promise<void>
   onDelete: (id: string) => void
 }
 
@@ -42,13 +42,17 @@ export default function AdminMakeupServicesPage({ services, onCreate, onUpdate, 
     setFormOpen(true)
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const { highlightsText, ...values } = draft
     const service = { ...values, highlights: highlightsText.split('\n').map((line) => line.trim()).filter(Boolean) }
-    if (editingId) onUpdate(editingId, service)
-    else onCreate(service)
-    setFormOpen(false)
+    try {
+      if (editingId) await onUpdate(editingId, service)
+      else await onCreate(service)
+      setFormOpen(false)
+    } catch {
+      // The app-level toast already reports the API error.
+    }
   }
 
   const updateDraft = <K extends keyof MakeupServiceDraft>(field: K, value: MakeupServiceDraft[K]) => {

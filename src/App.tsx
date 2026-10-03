@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Header from './components/layout/Header'
 import Footer from './components/layout/Footer'
 import HomePage from './pages/customer/HomePage'
@@ -16,8 +16,9 @@ import Toast from './components/common/Toast'
 import { useTheme } from './hooks/useTheme'
 import { useScrollReveal } from './hooks/useScrollReveal'
 import { useToast } from './hooks/useToast'
-import { getCategoryTree, getMakeupCategories, getMakeupAppointments, getBookings, getProducts } from './services/catalog-service'
+import { getCategoryTree, getMakeupCategories, getMakeupAppointments, getBookings, getProducts, fetchCategoryTree, fetchMakeupCategories, fetchMakeupAppointments, fetchBookings, fetchProducts } from './services/catalog-service'
 import { createBookingsFromCart } from './services/booking-service'
+import { api } from './services/api'
 import type { NavTarget, PageKey } from './types/navigation'
 import type { CartLine } from './types/cart'
 import type { RentalBooking, RentalBookingInput } from './types/product'
@@ -37,13 +38,50 @@ function App() {
   const [modalProductId, setModalProductId] = useState<string | null>(null)
   const [cart, setCart] = useState<CartLine[]>([])
   const [cartOpen, setCartOpen] = useState(false)
-  const [bookings, setBookings] = useState<RentalBooking[]>(() => getBookings())
-  const [nextBookingSeq, setNextBookingSeq] = useState(16) // nối tiếp đúng 15 đơn mẫu (b1..b15) của bản gốc
-  const [categoryTree, setCategoryTree] = useState<CategoryGroup[]>(() => getCategoryTree())
-  const [products, setProducts] = useState<Product[]>(() => getProducts())
-  const [makeupAppointments, setMakeupAppointments] = useState<MakeupAppointment[]>(() => getMakeupAppointments())
-  const [nextMakeupAppointmentSeq, setNextMakeupAppointmentSeq] = useState(() => getMakeupAppointments().length + 1)
-  const [makeupCategories, setMakeupCategories] = useState<MakeupCategory[]>(() => getMakeupCategories())
+  const [bookings, setBookings] = useState<RentalBooking[]>([])
+  const [nextBookingSeq, setNextBookingSeq] = useState(16)
+  const [categoryTree, setCategoryTree] = useState<CategoryGroup[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [makeupAppointments, setMakeupAppointments] = useState<MakeupAppointment[]>([])
+  const [makeupCategories, setMakeupCategories] = useState<MakeupCategory[]>([])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadData = async () => {
+      try {
+        const [categories, productList, bookingsList, appointmentList, serviceList] = await Promise.all([
+          fetchCategoryTree(),
+          fetchProducts(),
+          fetchBookings(),
+          fetchMakeupAppointments(),
+          fetchMakeupCategories(),
+        ])
+
+        if (!isMounted) return
+
+        setCategoryTree(categories)
+        setProducts(productList)
+        setBookings(bookingsList)
+        setMakeupAppointments(appointmentList)
+        setMakeupCategories(serviceList)
+        setNextBookingSeq(Math.max(16, bookingsList.length + 16))
+      } catch {
+        if (!isMounted) return
+        setCategoryTree(getCategoryTree())
+        setProducts(getProducts())
+        setBookings(getBookings())
+        setMakeupAppointments(getMakeupAppointments())
+        setMakeupCategories(getMakeupCategories())
+        setNextBookingSeq(16)
+      }
+    }
+
+    void loadData()
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const modalProduct = modalProductId ? products.find((product) => product.id === modalProductId) : undefined
 
@@ -71,119 +109,212 @@ function App() {
     setCart((prev) => prev.filter((c) => c.lineId !== lineId))
   }
 
-  const handleSubmitCheckout = (name: string, phone: string, depositType: 'Tiền mặt' | 'CCCD') => {
+  const handleSubmitCheckout = async (name: string, phone: string, depositType: 'Tiền mặt' | 'CCCD') => {
     if (!name || !phone) {
       showToast('Vui lòng nhập họ tên và số điện thoại')
       return
     }
-    const newBookings = createBookingsFromCart(cart, name, phone, depositType, nextBookingSeq)
-    setBookings((prev) => [...prev, ...newBookings])
-    setNextBookingSeq((seq) => seq + cart.length)
-    setCart([])
-    setCartOpen(false)
-    showToast('Đặt thuê thành công! Chúng tôi sẽ liên hệ xác nhận sớm.')
+
+    try {
+      const bookingDrafts = createBookingsFromCart(cart, name, phone, depositType, nextBookingSeq)
+      const createdBookings = await api.post<RentalBooking[]>('/api/bookings/bulk', bookingDrafts)
+      setBookings((current) => [...current, ...createdBookings])
+      setNextBookingSeq((sequence) => sequence + createdBookings.length)
+      setCart([])
+      setCartOpen(false)
+      showToast('Đặt thuê thành công! Chúng tôi sẽ liên hệ xác nhận sớm.')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể tạo đơn thuê.')
+    }
   }
 
-  const handleCreateRentalBooking = (booking: RentalBookingInput) => {
-    const sequence = nextBookingSeq
-    setBookings((current) => [...current, { ...booking, id: `b${sequence}`, code: `PA-${1000 + sequence}` }])
-    setNextBookingSeq((current) => current + 1)
-    showToast('Đã tạo đơn thuê.')
+  const handleCreateRentalBooking = async (booking: RentalBookingInput) => {
+    try {
+      const created = await api.post<RentalBooking>('/api/bookings', booking)
+      setBookings((current) => [...current, created])
+      setNextBookingSeq((current) => current + 1)
+      showToast('Đã tạo đơn thuê.')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể tạo đơn thuê.')
+    }
   }
 
-  const handleUpdateRentalBooking = (id: string, booking: RentalBookingInput) => {
-    setBookings((current) => current.map((item) => item.id === id ? { ...booking, id, code: item.code } : item))
-    showToast('Đã cập nhật đơn thuê.')
+  const handleUpdateRentalBooking = async (id: string, booking: RentalBookingInput) => {
+    try {
+      const updated = await api.put<RentalBooking>(`/api/bookings/${id}`, booking)
+      setBookings((current) => current.map((item) => item.id === id ? updated : item))
+      showToast('Đã cập nhật đơn thuê.')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể cập nhật đơn thuê.')
+    }
   }
 
-  const handleDeleteRentalBooking = (id: string) => {
-    setBookings((current) => current.filter((item) => item.id !== id))
-    showToast('Đã xóa đơn thuê.')
+  const handleDeleteRentalBooking = async (id: string) => {
+    try {
+      await api.del(`/api/bookings/${id}`)
+      setBookings((current) => current.filter((item) => item.id !== id))
+      showToast('Đã xóa đơn thuê.')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể xóa đơn thuê.')
+    }
   }
 
-  const handleCreateProduct = (product: Omit<Product, 'id'>) => {
-    const id = `p-${Date.now()}`
-    setProducts((current) => [...current, { ...product, id }])
-    showToast('Đã thêm sản phẩm vào catalog.')
+  const handleCreateProduct = async (product: Omit<Product, 'id'>) => {
+    try {
+      const created = await api.post<Product>('/api/products', product)
+      setProducts((current) => [...current, created])
+      showToast('Đã thêm sản phẩm vào catalog.')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể tạo sản phẩm.')
+    }
   }
 
-  const handleUpdateProduct = (id: string, product: Omit<Product, 'id'>) => {
-    setProducts((current) => current.map((item) => item.id === id ? { ...product, id } : item))
-    showToast('Đã cập nhật sản phẩm.')
+  const handleUpdateProduct = async (id: string, product: Omit<Product, 'id'>) => {
+    try {
+      const updated = await api.put<Product>(`/api/products/${id}`, product)
+      setProducts((current) => current.map((item) => item.id === id ? updated : item))
+      showToast('Đã cập nhật sản phẩm.')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể cập nhật sản phẩm.')
+    }
   }
 
-  const handleDeleteProduct = (id: string) => {
-    setProducts((current) => current.filter((item) => item.id !== id))
-    if (modalProductId === id) setModalProductId(null)
-    showToast('Đã xóa sản phẩm khỏi catalog.')
+  const handleDeleteProduct = async (id: string) => {
+    try {
+      await api.del(`/api/products/${id}`)
+      setProducts((current) => current.filter((item) => item.id !== id))
+      if (modalProductId === id) setModalProductId(null)
+      showToast('Đã xóa sản phẩm khỏi catalog.')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể xóa sản phẩm.')
+    }
   }
 
   const handleSubmitContact = () => {
     showToast('Cảm ơn bạn! Chúng tôi sẽ liên hệ lại sớm.')
   }
 
-  const handleCreateMakeupAppointment = (appointment: MakeupAppointmentInput) => {
-    const id = `ma${nextMakeupAppointmentSeq}`
-    setMakeupAppointments((prev) => [...prev, { ...appointment, id }])
-    setNextMakeupAppointmentSeq((sequence) => sequence + 1)
-    showToast('Đã ghi nhận lịch makeup. Cửa hàng sẽ liên hệ xác nhận.')
+  const handleCreateMakeupAppointment = async (appointment: MakeupAppointmentInput) => {
+    try {
+      const created = await api.post<MakeupAppointment>('/api/makeup-appointments', appointment)
+      setMakeupAppointments((current) => [...current, created])
+      showToast('Đã ghi nhận lịch makeup. Cửa hàng sẽ liên hệ xác nhận.')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể ghi nhận lịch makeup.')
+      throw error
+    }
   }
 
-  const handleUpdateMakeupAppointment = (id: string, appointment: MakeupAppointmentInput) => {
-    setMakeupAppointments((prev) => prev.map((item) => item.id === id ? { ...appointment, id } : item))
-    showToast('Đã cập nhật lịch makeup.')
+  const handleUpdateMakeupAppointment = async (id: string, appointment: MakeupAppointmentInput) => {
+    try {
+      const updated = await api.put<MakeupAppointment>(`/api/makeup-appointments/${id}`, appointment)
+      setMakeupAppointments((current) => current.map((item) => item.id === id ? updated : item))
+      showToast('Đã cập nhật lịch makeup.')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể cập nhật lịch makeup.')
+      throw error
+    }
   }
 
-  const handleDeleteMakeupAppointment = (id: string) => {
-    setMakeupAppointments((prev) => prev.filter((item) => item.id !== id))
-    showToast('Đã xoá lịch makeup.')
+  const handleDeleteMakeupAppointment = async (id: string) => {
+    try {
+      await api.del(`/api/makeup-appointments/${id}`)
+      setMakeupAppointments((current) => current.filter((item) => item.id !== id))
+      showToast('Đã xoá lịch makeup.')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể xóa lịch makeup.')
+    }
   }
 
-  const handleCreateMakeupService = (service: Omit<MakeupCategory, 'id'>) => {
-    setMakeupCategories((prev) => [...prev, { ...service, id: `mk-${Date.now()}` }])
-    showToast('Đã thêm dịch vụ makeup.')
+  const handleCreateMakeupService = async (service: Omit<MakeupCategory, 'id'>) => {
+    try {
+      const created = await api.post<MakeupCategory>('/api/makeup-services', service)
+      setMakeupCategories((current) => [...current, created])
+      showToast('Đã thêm dịch vụ makeup.')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể thêm dịch vụ makeup.')
+      throw error
+    }
   }
 
-  const handleUpdateMakeupService = (id: string, service: Omit<MakeupCategory, 'id'>) => {
-    setMakeupCategories((prev) => prev.map((item) => item.id === id ? { ...service, id } : item))
-    showToast('Đã cập nhật dịch vụ makeup.')
+  const handleUpdateMakeupService = async (id: string, service: Omit<MakeupCategory, 'id'>) => {
+    try {
+      const updated = await api.put<MakeupCategory>(`/api/makeup-services/${id}`, service)
+      setMakeupCategories((current) => current.map((item) => item.id === id ? updated : item))
+      showToast('Đã cập nhật dịch vụ makeup.')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể cập nhật dịch vụ makeup.')
+      throw error
+    }
   }
 
-  const handleDeleteMakeupService = (id: string) => {
-    setMakeupCategories((prev) => prev.filter((item) => item.id !== id))
-    showToast('Đã xoá dịch vụ makeup.')
+  const handleDeleteMakeupService = async (id: string) => {
+    try {
+      await api.del(`/api/makeup-services/${id}`)
+      setMakeupCategories((current) => current.filter((item) => item.id !== id))
+      showToast('Đã xoá dịch vụ makeup.')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể xóa dịch vụ makeup.')
+    }
   }
 
-  const handleRenameCategoryGroup = (groupIndex: number, name: string) => {
-    setCategoryTree((current) => current.map((group, index) => index === groupIndex ? { ...group, group: name } : group))
+  const handleRenameCategoryGroup = async (groupIndex: number, name: string) => {
+    try {
+      const nextCategories = await api.put<CategoryGroup[]>(`/api/categories/groups/${groupIndex}`, { name })
+      setCategoryTree(nextCategories)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể đổi tên nhóm danh mục.')
+    }
   }
 
-  const handleDeleteCategoryGroup = (groupIndex: number) => {
-    setCategoryTree((current) => current.filter((_, index) => index !== groupIndex))
+  const handleDeleteCategoryGroup = async (groupIndex: number) => {
+    try {
+      const nextCategories = await api.del<CategoryGroup[]>(`/api/categories/groups/${groupIndex}`)
+      setCategoryTree(nextCategories)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể xóa nhóm danh mục.')
+    }
   }
 
-  const handleAddCategoryGroup = (name: string) => {
-    setCategoryTree((current) => [...current, { group: name, items: [] }])
+  const handleAddCategoryGroup = async (name: string) => {
+    try {
+      const nextCategories = await api.post<CategoryGroup[]>('/api/categories/groups', { name })
+      setCategoryTree(nextCategories)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể thêm nhóm danh mục.')
+    }
   }
 
-  const handleAddCategory = (groupIndex: number, name: string) => {
-    setCategoryTree((current) => current.map((group, index) => index === groupIndex ? { ...group, items: [...group.items, name] } : group))
+  const handleAddCategory = async (groupIndex: number, name: string) => {
+    try {
+      const nextCategories = await api.post<CategoryGroup[]>(`/api/categories/${groupIndex}/items`, { name })
+      setCategoryTree(nextCategories)
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể thêm danh mục con.')
+    }
   }
 
-  const handleRenameCategory = (groupIndex: number, oldName: string, newName: string) => {
-    setCategoryTree((current) => current.map((group, index) => index === groupIndex
-      ? { ...group, items: group.items.map((item) => item === oldName ? newName : item) }
-      : group))
-    setProducts((current) => current.map((product) => product.category === oldName ? { ...product, category: newName } : product))
+  const handleRenameCategory = async (groupIndex: number, oldName: string, newName: string) => {
+    try {
+      const nextCategories = await api.put<CategoryGroup[]>(`/api/categories/${groupIndex}/items/${encodeURIComponent(oldName)}`, { name: newName })
+      setCategoryTree(nextCategories)
+      setProducts((current) => current.map((product) => product.category === oldName ? { ...product, category: newName } : product))
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể đổi tên danh mục con.')
+    }
   }
 
-  const handleDeleteCategory = (groupIndex: number, name: string, moveProductsTo?: string) => {
+  const handleDeleteCategory = async (groupIndex: number, name: string, moveProductsTo?: string) => {
     if (products.some((product) => product.category === name) && !moveProductsTo) return
-    setCategoryTree((current) => current.map((group, index) => index === groupIndex
-      ? { ...group, items: group.items.filter((item) => item !== name) }
-      : group))
-    if (moveProductsTo) {
-      setProducts((current) => current.map((product) => product.category === name ? { ...product, category: moveProductsTo } : product))
+
+    try {
+      const nextCategories = await api.del<CategoryGroup[]>(`/api/categories/${groupIndex}/items/${encodeURIComponent(name)}${moveProductsTo ? `?moveTo=${encodeURIComponent(moveProductsTo)}` : ''}`)
+      setCategoryTree(nextCategories)
+      if (moveProductsTo) {
+        setProducts((current) => current.map((product) => product.category === name ? { ...product, category: moveProductsTo } : product))
+      }
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể xóa danh mục con.')
     }
   }
 

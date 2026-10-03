@@ -2,6 +2,7 @@ import type { CategoryGroup, MakeupCategory } from '../types/catalog'
 import type { MakeupAppointment } from '../types/makeup-appointment'
 import type { Product, ProductVariant, RentalBooking, Review, Differentiator } from '../types/product'
 import { defaultCategoryTree, makeupCategories, products, bookings, makeupAppointments, REVIEWS, DIFFS } from '../data/seed-data'
+import { api } from './api'
 
 /**
  * Lớp truy cập dữ liệu danh mục. UI CHỈ gọi các hàm ở đây, không import seed-data trực tiếp.
@@ -11,16 +12,48 @@ export function getCategoryTree(): CategoryGroup[] {
   return defaultCategoryTree()
 }
 
+export async function fetchCategoryTree(): Promise<CategoryGroup[]> {
+  try {
+    return await api.get<CategoryGroup[]>('/api/categories')
+  } catch {
+    return defaultCategoryTree()
+  }
+}
+
 export function getMakeupCategories(): MakeupCategory[] {
   return makeupCategories
+}
+
+export async function fetchMakeupCategories(): Promise<MakeupCategory[]> {
+  try {
+    return await api.get<MakeupCategory[]>('/api/makeup-services')
+  } catch {
+    return makeupCategories
+  }
 }
 
 export function getMakeupAppointments(): MakeupAppointment[] {
   return makeupAppointments
 }
 
+export async function fetchMakeupAppointments(): Promise<MakeupAppointment[]> {
+  try {
+    return await api.get<MakeupAppointment[]>('/api/makeup-appointments')
+  } catch {
+    return makeupAppointments
+  }
+}
+
 export function getProducts(): Product[] {
   return products
+}
+
+export async function fetchProducts(): Promise<Product[]> {
+  try {
+    return await api.get<Product[]>('/api/products')
+  } catch {
+    return products
+  }
 }
 
 export function findProduct(id: string): Product | undefined {
@@ -60,6 +93,14 @@ export function getProductsForCategory(
 
 export function getBookings(): RentalBooking[] {
   return bookings
+}
+
+export async function fetchBookings(): Promise<RentalBooking[]> {
+  try {
+    return await api.get<RentalBooking[]>('/api/bookings')
+  } catch {
+    return bookings
+  }
 }
 
 /** Port nguyên từ mostRentedProducts() gốc — xếp hạng sản phẩm theo số lượt đặt. */

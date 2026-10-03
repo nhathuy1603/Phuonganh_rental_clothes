@@ -10,7 +10,7 @@ interface CartDrawerProps {
   cart: CartLine[]
   onClose: () => void
   onRemoveLine: (lineId: string) => void
-  onSubmitCheckout: (name: string, phone: string, depositType: 'Tiền mặt' | 'CCCD') => void
+  onSubmitCheckout: (name: string, phone: string, depositType: 'Tiền mặt' | 'CCCD') => Promise<void>
 }
 
 /** Port của renderCartDrawer() + toggleCart()/removeCartLine()/openCheckout() gốc. */

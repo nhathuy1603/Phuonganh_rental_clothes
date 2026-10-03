@@ -1,7 +1,7 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 
 interface CheckoutFormProps {
-  onSubmit: (name: string, phone: string, depositType: 'Tiền mặt' | 'CCCD') => void
+  onSubmit: (name: string, phone: string, depositType: 'Tiền mặt' | 'CCCD') => Promise<void>
 }
 
 /**
@@ -14,11 +14,17 @@ export default function CheckoutForm({ onSubmit }: CheckoutFormProps) {
   const nameRef = useRef<HTMLInputElement>(null)
   const phoneRef = useRef<HTMLInputElement>(null)
   const [depositType, setDepositType] = useState<'Tiền mặt' | 'CCCD'>('Tiền mặt')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const name = (nameRef.current?.value || '').trim()
     const phone = (phoneRef.current?.value || '').trim()
-    onSubmit(name, phone, depositType)
+    setIsSubmitting(true)
+    try {
+      await onSubmit(name, phone, depositType)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -32,8 +38,8 @@ export default function CheckoutForm({ onSubmit }: CheckoutFormProps) {
         <option value="Tiền mặt">Tiền mặt tại cửa hàng</option>
         <option value="CCCD">Giữ CCCD bản gốc</option>
       </select>
-      <button className="btn btn-primary btn-block" style={{ marginTop: '6px' }} onClick={handleSubmit}>
-        Xác nhận đặt thuê
+      <button className="btn btn-primary btn-block" style={{ marginTop: '6px' }} onClick={handleSubmit} disabled={isSubmitting}>
+        {isSubmitting ? 'Đang gửi...' : 'Xác nhận đặt thuê'}
       </button>
     </div>
   )

@@ -7,7 +7,7 @@ interface MakeupDetailPageProps {
   makeupCategories: MakeupCategory[]
   serviceId: string | null
   onBack: () => void
-  onBook: (appointment: MakeupAppointmentInput) => void
+  onBook: (appointment: MakeupAppointmentInput) => Promise<void>
 }
 
 interface BookingFormState {
@@ -22,6 +22,7 @@ export default function MakeupDetailPage({ makeupCategories, serviceId, onBack, 
   const service = makeupCategories.find((item) => item.id === serviceId) ?? makeupCategories[0]
   const [selectedServiceId, setSelectedServiceId] = useState<string>(service?.id ?? makeupCategories[0]?.id ?? '')
   const [showBookingForm, setShowBookingForm] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [booking, setBooking] = useState<BookingFormState>({
     name: '',
     phone: '',
@@ -61,7 +62,7 @@ export default function MakeupDetailPage({ makeupCategories, serviceId, onBack, 
     setError(null)
   }
 
-  const handleSubmitBooking = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmitBooking = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (!booking.name.trim() || !booking.phone.trim() || !booking.date || !booking.time) {
@@ -70,22 +71,29 @@ export default function MakeupDetailPage({ makeupCategories, serviceId, onBack, 
     }
 
     setError(null)
-    onBook({
-      customer: booking.name.trim(),
-      phone: booking.phone.trim(),
-      serviceId: selectedService.id,
-      date: booking.date,
-      time: booking.time,
-      notes: booking.notes.trim(),
-      amount: selectedService.priceFrom,
-      depositAmount: 0,
-      depositRefunded: false,
-      lateFee: 0,
-      paid: false,
-      status: 'Chờ xác nhận',
-    })
-    setBooking({ name: '', phone: '', date: '', time: '', notes: '' })
-    setShowBookingForm(false)
+    setIsSubmitting(true)
+    try {
+      await onBook({
+        customer: booking.name.trim(),
+        phone: booking.phone.trim(),
+        serviceId: selectedService.id,
+        date: booking.date,
+        time: booking.time,
+        notes: booking.notes.trim(),
+        amount: selectedService.priceFrom,
+        depositAmount: 0,
+        depositRefunded: false,
+        lateFee: 0,
+        paid: false,
+        status: 'Chờ xác nhận',
+      })
+      setBooking({ name: '', phone: '', date: '', time: '', notes: '' })
+      setShowBookingForm(false)
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Không thể ghi nhận lịch makeup.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -253,8 +261,8 @@ export default function MakeupDetailPage({ makeupCategories, serviceId, onBack, 
                 <button type="button" className="btn btn-ghost" onClick={() => setShowBookingForm(false)}>
                   Huỷ
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Xác nhận đặt lịch
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Đang gửi...' : 'Xác nhận đặt lịch'}
                 </button>
               </div>
             </form>

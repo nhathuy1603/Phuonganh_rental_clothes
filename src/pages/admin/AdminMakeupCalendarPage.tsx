@@ -5,8 +5,8 @@ import type { MakeupAppointment, MakeupAppointmentInput, MakeupAppointmentStatus
 interface AdminMakeupCalendarPageProps {
   appointments: MakeupAppointment[]
   services: MakeupCategory[]
-  onCreate: (appointment: MakeupAppointmentInput) => void
-  onUpdate: (id: string, appointment: MakeupAppointmentInput) => void
+  onCreate: (appointment: MakeupAppointmentInput) => Promise<void>
+  onUpdate: (id: string, appointment: MakeupAppointmentInput) => Promise<void>
   onDelete: (id: string) => void
 }
 
@@ -103,14 +103,18 @@ export default function AdminMakeupCalendarPage({ appointments, services, onCrea
     setFormOpen(true)
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (editingId) onUpdate(editingId, form)
-    else onCreate(form)
-    const [year, month] = form.date.split('-').map(Number)
-    setSelectedDate(form.date)
-    setVisibleMonth(new Date(Date.UTC(year, month - 1, 1)))
-    setFormOpen(false)
+    try {
+      if (editingId) await onUpdate(editingId, form)
+      else await onCreate(form)
+      const [year, month] = form.date.split('-').map(Number)
+      setSelectedDate(form.date)
+      setVisibleMonth(new Date(Date.UTC(year, month - 1, 1)))
+      setFormOpen(false)
+    } catch {
+      // The app-level toast already reports the API error.
+    }
   }
 
   const handleDelete = (appointment: MakeupAppointment) => {

@@ -25,11 +25,11 @@ interface AdminDashboardPageProps {
   categories: CategoryGroup[]
   makeupAppointments: MakeupAppointment[]
   makeupServices: MakeupCategory[]
-  onCreateMakeupAppointment: (appointment: MakeupAppointmentInput) => void
-  onUpdateMakeupAppointment: (id: string, appointment: MakeupAppointmentInput) => void
+  onCreateMakeupAppointment: (appointment: MakeupAppointmentInput) => Promise<void>
+  onUpdateMakeupAppointment: (id: string, appointment: MakeupAppointmentInput) => Promise<void>
   onDeleteMakeupAppointment: (id: string) => void
-  onCreateMakeupService: (service: Omit<MakeupCategory, 'id'>) => void
-  onUpdateMakeupService: (id: string, service: Omit<MakeupCategory, 'id'>) => void
+  onCreateMakeupService: (service: Omit<MakeupCategory, 'id'>) => Promise<void>
+  onUpdateMakeupService: (id: string, service: Omit<MakeupCategory, 'id'>) => Promise<void>
   onDeleteMakeupService: (id: string) => void
   onRenameCategoryGroup: (groupIndex: number, name: string) => void
   onDeleteCategoryGroup: (groupIndex: number) => void
