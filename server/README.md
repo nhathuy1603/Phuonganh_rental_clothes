@@ -25,5 +25,6 @@ REST API for the Phương Anh rental clothes storefront, backed by PostgreSQL th
 - `npm run db:migrate` creates a development migration.
 - `npm run db:deploy` applies committed migrations in production.
 - `npm run db:seed` safely inserts or updates the starter records.
+- `npm run db:seed:makeup` restores missing default makeup services without changing existing services.
 
 The API persists product variants, categories, rental bookings, makeup services, and makeup appointments. Image upload still validates files up to 5MB but does not store image files. CORS defaults to the Vite frontend on port 5173.

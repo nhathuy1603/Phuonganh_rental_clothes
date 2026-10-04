@@ -13,6 +13,7 @@ import type { Product } from './types/product'
 import ProductModal from './components/product/ProductModal'
 import CartDrawer from './components/cart/CartDrawer'
 import Toast from './components/common/Toast'
+import FloatingContactActions from './components/common/FloatingContactActions'
 import { useTheme } from './hooks/useTheme'
 import { useScrollReveal } from './hooks/useScrollReveal'
 import { useToast } from './hooks/useToast'
@@ -439,6 +440,7 @@ function App() {
         />
       )}
 
+      {currentPage !== 'admin' && <FloatingContactActions />}
       <Toast message={toastMessage} />
     </>
   )
