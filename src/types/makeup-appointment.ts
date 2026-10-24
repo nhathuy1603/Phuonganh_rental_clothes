@@ -2,6 +2,8 @@ export type MakeupAppointmentStatus = 'Chờ xác nhận' | 'Đã xác nhận' |
 
 export interface MakeupAppointment {
   id: string
+  /** Tài khoản khách đã đặt đơn (null nếu khách vãng lai). */
+  customerId?: string | null
   customer: string
   phone: string
   serviceId: string

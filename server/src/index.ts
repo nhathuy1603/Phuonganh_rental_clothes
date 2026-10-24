@@ -1,5 +1,5 @@
 import { config } from './config.js'
-import { randomUUID } from 'node:crypto'
+import { randomInt, randomUUID } from 'node:crypto'
 import cors from 'cors'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { OAuth2Client, type TokenPayload } from 'google-auth-library'
@@ -517,6 +517,45 @@ app.delete('/api/makeup-appointments/:id', asyncRoute(async (req, res) => {
 
   await prisma.makeupAppointment.delete({ where: { id: req.params.id } })
   res.json({ message: 'Đã xóa lịch makeup.', removed: existing })
+}))
+
+/** Mật khẩu tạm dễ đọc qua Zalo: bỏ các ký tự dễ nhầm như 0/O, 1/l/I. */
+function temporaryPassword(): string {
+  const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789'
+  return Array.from({ length: 8 }, () => alphabet[randomInt(alphabet.length)]).join('')
+}
+
+app.get('/api/admin/customers', asyncRoute(async (_req, res) => {
+  const customers = await prisma.customer.findMany({
+    orderBy: { createdAt: 'desc' },
+    select: {
+      ...customerFields,
+      createdAt: true,
+      passwordHash: true,
+      googleId: true,
+      _count: { select: { rentalBookings: true, makeupAppointments: true } },
+    },
+  })
+  res.json(customers.map(({ passwordHash, googleId, _count, ...customer }) => ({
+    ...customer,
+    hasPassword: Boolean(passwordHash),
+    hasGoogle: Boolean(googleId),
+    bookingCount: _count.rentalBookings,
+    appointmentCount: _count.makeupAppointments,
+  })))
+}))
+
+/** Đặt mật khẩu tạm để cửa hàng gửi cho khách; khách dùng SĐT + mật khẩu này để đăng nhập. */
+app.post('/api/admin/customers/:id/reset-password', asyncRoute(async (req, res) => {
+  const customer = await prisma.customer.findUnique({ where: { id: req.params.id } })
+  if (!customer) throw new HttpError(404, 'Không tìm thấy khách hàng.')
+  if (!customer.phone) {
+    throw new HttpError(400, 'Khách này đăng nhập bằng Google và chưa có SĐT, nên chưa thể dùng mật khẩu. Hãy hướng dẫn khách đăng nhập bằng Google.')
+  }
+
+  const password = temporaryPassword()
+  await prisma.customer.update({ where: { id: customer.id }, data: { passwordHash: hashPassword(password) } })
+  res.json({ temporaryPassword: password, phone: customer.phone })
 }))
 
 app.post('/api/admin/upload-image', upload.single('image'), asyncRoute(async (req, res) => {

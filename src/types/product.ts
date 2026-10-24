@@ -28,6 +28,8 @@ export type RentalStatus = 'Đặt trước' | 'Đang thuê' | 'Đã trả'
 export interface RentalBooking {
   id: string
   code: string
+  /** Tài khoản khách đã đặt đơn (null nếu khách vãng lai). */
+  customerId?: string | null
   customer: string
   phone: string
   productId: string

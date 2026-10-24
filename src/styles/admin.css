@@ -354,3 +354,16 @@ tbody tr:hover{background:var(--paper);}
 	.admin-row-actions,.admin-product-actions{justify-content:flex-end;}
 	.admin-product-actions .admin-icon-action{width:32px;height:32px;}
 }
+.admin-customer-methods{display:flex;flex-wrap:wrap;gap:6px;}
+.admin-customer-reset,.admin-customer-orders{padding:20px 26px 24px;}
+.admin-customer-reset p{margin:0 0 14px;font-size:13px;line-height:1.6;color:var(--ink-soft);}
+.admin-customer-reset dl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:0 0 14px;}
+.admin-customer-reset dt{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-soft);align-self:center;}
+.admin-customer-reset dd{margin:0;font-size:14px;}
+.admin-customer-password{font-family:ui-monospace,Consolas,monospace;font-size:20px!important;font-weight:700;letter-spacing:.08em;}
+.admin-customer-message{padding:12px;border:1px dashed var(--line);border-radius:8px;}
+.admin-customer-orders h3{margin:6px 0 10px;font-size:13px;}
+.admin-customer-orders ul{list-style:none;margin:0 0 18px;padding:0;display:flex;flex-direction:column;gap:8px;}
+.admin-customer-orders li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;}
+.admin-customer-orders li span:not(.badge){color:var(--ink-soft);flex:1 1 180px;}
+@media (max-width:640px){.admin-customer-reset,.admin-customer-orders{padding:16px 18px 20px;}}

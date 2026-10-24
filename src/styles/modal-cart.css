@@ -30,7 +30,7 @@
 .date-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .date-row label{display:block;}
 .date-row span.dl{display:block;font-size:11.5px;color:var(--ink-soft);margin-bottom:5px;}
-input[type=date],input[type=text],input[type=tel],input[type=password],input[type=email],input[type=time],input[type=number],select,textarea{
+input:not([type]),input[type=date],input[type=text],input[type=tel],input[type=password],input[type=email],input[type=time],input[type=number],select,textarea{
   width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:4px;font-family:inherit;font-size:13.5px;background:var(--paper);color:var(--ink);
 }
 .avail-box{margin-top:16px;padding:12px 14px;border-radius:4px;font-size:13px;font-weight:600;display:flex;gap:8px;align-items:center;}

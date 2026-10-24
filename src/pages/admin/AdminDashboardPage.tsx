@@ -10,8 +10,9 @@ import AdminMakeupServicesPage from './AdminMakeupServicesPage'
 import AdminCategoriesPage from './AdminCategoriesPage'
 import AdminRentalBookingsPage from './AdminRentalBookingsPage'
 import AdminProductsPage from './AdminProductsPage'
+import AdminCustomersPage from './AdminCustomersPage'
 
-type AdminSection = 'overview' | 'bookings' | 'inventory' | 'finance' | 'categories' | 'makeup-calendar' | 'makeup-services'
+type AdminSection = 'overview' | 'bookings' | 'inventory' | 'finance' | 'categories' | 'makeup-calendar' | 'makeup-services' | 'customers'
 
 interface AdminDashboardPageProps {
   adminName: string
@@ -50,6 +51,7 @@ const sections: { id: AdminSection; icon: string; label: string }[] = [
   { id: 'finance', icon: '▥', label: 'Tài chính' },
   { id: 'makeup-calendar', icon: '▦', label: 'Lịch Makeup' },
   { id: 'makeup-services', icon: '✦', label: 'Dịch vụ Makeup' },
+  { id: 'customers', icon: '◎', label: 'Khách hàng' },
 ]
 
 export default function AdminDashboardPage({
@@ -215,6 +217,10 @@ export default function AdminDashboardPage({
 
         {section === 'inventory' && (
           <AdminProductsPage products={products} categories={categories} onCreate={onCreateProduct} onUpdate={onUpdateProduct} onDelete={onDeleteProduct} />
+        )}
+
+        {section === 'customers' && (
+          <AdminCustomersPage bookings={bookings} makeupAppointments={makeupAppointments} products={products} makeupServices={makeupServices} />
         )}
 
         {section === 'categories' && (
