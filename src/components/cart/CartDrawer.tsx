@@ -11,10 +11,12 @@ interface CartDrawerProps {
   onClose: () => void
   onRemoveLine: (lineId: string) => void
   onSubmitCheckout: (name: string, phone: string, depositType: 'Tiền mặt' | 'CCCD') => Promise<void>
+  /** Khách đã đăng nhập: điền sẵn họ tên, SĐT. */
+  customer?: { name: string; phone: string | null } | null
 }
 
 /** Port của renderCartDrawer() + toggleCart()/removeCartLine()/openCheckout() gốc. */
-export default function CartDrawer({ cart, onClose, onRemoveLine, onSubmitCheckout }: CartDrawerProps) {
+export default function CartDrawer({ cart, onClose, onRemoveLine, onSubmitCheckout, customer }: CartDrawerProps) {
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const subtotal = cart.reduce((a, c) => a + c.lineTotal, 0)
   const depositTotal = cart.reduce((a, c) => a + c.deposit, 0)
@@ -84,7 +86,7 @@ export default function CartDrawer({ cart, onClose, onRemoveLine, onSubmitChecko
               <span>{money(subtotal + depositTotal)}</span>
             </div>
             {checkoutOpen ? (
-              <CheckoutForm onSubmit={onSubmitCheckout} />
+              <CheckoutForm onSubmit={onSubmitCheckout} defaultName={customer?.name} defaultPhone={customer?.phone ?? undefined} />
             ) : (
               <button className="btn btn-primary btn-block" onClick={() => setCheckoutOpen(true)}>
                 Tiến hành đặt thuê

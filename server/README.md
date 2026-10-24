@@ -34,6 +34,18 @@ There is one admin account, configured through `ADMIN_USERNAME` and `ADMIN_PASSW
 
 Public routes (no login): `GET /api/categories`, `GET /api/products`, `GET /api/makeup-services`, `GET /api/bookings/availability` (dates only, no customer data), `POST /api/bookings/checkout`, `POST /api/makeup-appointments/request`. Every other `/api` route requires the admin token.
 
+## Customer accounts
+
+Customers sign up and log in with phone number + password (`POST /api/customers/register`, `POST /api/customers/login`). Phone numbers are normalized (`+84 905…` → `0905…`). The customer token lasts 30 days and only works on `/api/customers/*`; it cannot reach admin routes, and the admin token cannot reach customer routes.
+
+Accounts are optional: guests can still check out. Orders placed while logged in get a `customerId`, and `GET /api/customers/me/orders` returns only those. Earlier guest orders are not matched by phone, because signing up does not verify that the person owns the number. There is no password reset yet, neither self-service nor from the admin dashboard.
+
+### Sign in with Google
+
+Set `GOOGLE_CLIENT_ID` to enable it; leave it empty and the button stays hidden. The frontend reads the ID from `GET /api/customers/google-config`, so it only has to be set on the backend. `POST /api/customers/google` verifies the Google ID token (signature, expiry and audience) with `google-auth-library` and creates or finds the customer by Google account ID. Google does not share phone numbers, so a new Google account starts without one and "Đơn của tôi" asks for it (`PUT /api/customers/me/phone`). A phone number that already belongs to another account is refused; that person should log in with phone + password instead.
+
+Creating the Client ID (free): Google Cloud Console → APIs & Services → OAuth consent screen (External, app name, support email), then Credentials → Create credentials → OAuth client ID → Web application. Under "Authorized JavaScript origins" add every frontend origin, for example `http://localhost:5173`, `https://phuonganhthuedodanang.com`, `https://www.phuonganhthuedodanang.com`. No redirect URI is needed.
+
 Customer checkout and makeup requests only accept the customer's choices; prices, deposits and status are computed on the server, and checkout refuses dates that are already fully booked.
 
 ## Images

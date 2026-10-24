@@ -55,7 +55,10 @@ export default function MobileNavDrawer({
           {user ? (
             <div className="mobile-nav-account">
               <div className="account-dropdown-name">{user.name}</div>
-              <div className="account-dropdown-sub">{user.email}</div>
+              <div className="account-dropdown-sub">{user.phone ?? user.email}</div>
+              <button type="button" className="btn btn-primary btn-sm" style={{ marginTop: '8px', marginRight: '8px' }} onClick={() => onNavigate({ page: 'account' })}>
+                Đơn của tôi
+              </button>
               <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '8px' }} onClick={onLogout}>
                 Đăng xuất
               </button>
@@ -65,7 +68,7 @@ export default function MobileNavDrawer({
               type="button"
               className="btn btn-primary btn-block"
               style={{ marginBottom: '18px' }}
-              onClick={() => onNavigate({ page: 'login' })}
+              onClick={() => onNavigate({ page: 'account-login' })}
             >
               👤 Đăng nhập / Đăng ký
             </button>

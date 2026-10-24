@@ -103,7 +103,7 @@ export default function Header({
           </nav>
           <div className="header-actions">
             <ThemeToggle isDark={isDark} onToggle={onToggleTheme} extraClass="header-theme-toggle" />
-            <AccountControl user={user} onLogin={() => navigate({ page: 'login' })} onLogout={logout} />
+            <AccountControl user={user} onLogin={() => navigate({ page: 'account-login' })} onOpenAccount={() => navigate({ page: 'account' })} onLogout={logout} />
             <button className="icon-btn" onClick={onCartClick} aria-label="Giỏ hàng">
               🧺{cartCount > 0 && <span className="cart-count">{cartCount}</span>}
             </button>

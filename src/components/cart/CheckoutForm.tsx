@@ -1,6 +1,8 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 
 interface CheckoutFormProps {
+  defaultName?: string
+  defaultPhone?: string
   onSubmit: (name: string, phone: string, depositType: 'Tiền mặt' | 'CCCD') => Promise<void>
 }
 
@@ -10,7 +12,7 @@ interface CheckoutFormProps {
  * ở đây dùng uncontrolled input (useRef) để giữ đúng hành vi đó mà không phải
  * validate theo từng phím gõ.
  */
-export default function CheckoutForm({ onSubmit }: CheckoutFormProps) {
+export default function CheckoutForm({ defaultName = '', defaultPhone = '', onSubmit }: CheckoutFormProps) {
   const nameRef = useRef<HTMLInputElement>(null)
   const phoneRef = useRef<HTMLInputElement>(null)
   const [depositType, setDepositType] = useState<'Tiền mặt' | 'CCCD'>('Tiền mặt')
@@ -30,9 +32,9 @@ export default function CheckoutForm({ onSubmit }: CheckoutFormProps) {
   return (
     <div className="checkout-form" style={{ padding: 0 }}>
       <label>Họ và tên</label>
-      <input type="text" ref={nameRef} placeholder="Nguyễn Văn A" />
+      <input type="text" ref={nameRef} placeholder="Nguyễn Văn A" defaultValue={defaultName} />
       <label>Số điện thoại</label>
-      <input type="tel" ref={phoneRef} placeholder="09xxxxxxxx" />
+      <input type="tel" ref={phoneRef} placeholder="09xxxxxxxx" defaultValue={defaultPhone} />
       <label>Hình thức đặt cọc</label>
       <select value={depositType} onChange={(e: ChangeEvent<HTMLSelectElement>) => setDepositType(e.target.value as 'Tiền mặt' | 'CCCD')}>
         <option value="Tiền mặt">Tiền mặt tại cửa hàng</option>

@@ -29,6 +29,8 @@ export const config = {
   publicApiUrl: required('PUBLIC_API_URL', `http://localhost:${port}`).replace(/\/$/, ''),
   trustProxy: process.env.TRUST_PROXY === 'true',
   uploadDir: path.resolve(process.env.UPLOAD_DIR ?? 'uploads'),
+  // Client ID OAuth của Google; để trống thì tắt đăng nhập bằng Google.
+  googleClientId: process.env.GOOGLE_CLIENT_ID?.trim() || null,
   auth: {
     secret: authSecret,
     username: required('ADMIN_USERNAME', 'admin'),

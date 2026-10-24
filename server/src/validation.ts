@@ -9,8 +9,8 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày phải có dạng
 const clockTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Giờ phải có dạng HH:MM.')
 const phone = z
   .string()
-  .transform((value) => value.replace(/[\s.-]/g, ''))
-  .refine((value) => /^(\+84|0)\d{9,10}$/.test(value), 'Số điện thoại không hợp lệ.')
+  .transform((value) => value.replace(/[\s.-]/g, '').replace(/^\+84/, '0'))
+  .refine((value) => /^0\d{9,10}$/.test(value), 'Số điện thoại không hợp lệ.')
 
 // Chấp nhận ảnh đã upload (URL) và ảnh data URL cũ còn trong DB trước khi chuyển sang lưu file.
 const imageUrl = z
@@ -130,6 +130,23 @@ export const loginSchema = z.object({
   username: requiredText(100),
   password: z.string().min(1, 'Không được để trống.').max(200),
 })
+
+const customerPassword = z.string().min(6, 'Tối thiểu 6 ký tự.').max(200)
+
+export const customerRegisterSchema = z.object({
+  name: requiredText(120),
+  phone,
+  password: customerPassword,
+})
+
+export const customerLoginSchema = z.object({
+  phone,
+  password: z.string().min(1, 'Không được để trống.').max(200),
+})
+
+export const googleLoginSchema = z.object({ credential: z.string().min(20).max(4096) })
+
+export const customerPhoneSchema = z.object({ phone })
 
 const fieldLabels: Record<string, string> = {
   name: 'Tên',

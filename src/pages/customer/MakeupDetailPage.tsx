@@ -8,6 +8,8 @@ interface MakeupDetailPageProps {
   serviceId: string | null
   onBack: () => void
   onBook: (appointment: MakeupAppointmentInput) => Promise<void>
+  /** Khách đã đăng nhập: điền sẵn họ tên, SĐT. */
+  customer?: { name: string; phone: string | null } | null
 }
 
 interface BookingFormState {
@@ -18,18 +20,13 @@ interface BookingFormState {
   notes: string
 }
 
-export default function MakeupDetailPage({ makeupCategories, serviceId, onBack, onBook }: MakeupDetailPageProps) {
+export default function MakeupDetailPage({ makeupCategories, serviceId, onBack, onBook, customer }: MakeupDetailPageProps) {
+  const emptyBooking = (): BookingFormState => ({ name: customer?.name ?? '', phone: customer?.phone ?? '', date: '', time: '', notes: '' })
   const service = makeupCategories.find((item) => item.id === serviceId) ?? makeupCategories[0]
   const [selectedServiceId, setSelectedServiceId] = useState<string>(service?.id ?? makeupCategories[0]?.id ?? '')
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [booking, setBooking] = useState<BookingFormState>({
-    name: '',
-    phone: '',
-    date: '',
-    time: '',
-    notes: '',
-  })
+  const [booking, setBooking] = useState<BookingFormState>(emptyBooking)
   const [error, setError] = useState<string | null>(null)
 
   const selectedService = makeupCategories.find((item) => item.id === selectedServiceId) ?? service
@@ -38,8 +35,8 @@ export default function MakeupDetailPage({ makeupCategories, serviceId, onBack, 
     if (service?.id) setSelectedServiceId(service.id)
     setShowBookingForm(false)
     setError(null)
-    setBooking({ name: '', phone: '', date: '', time: '', notes: '' })
-  }, [service?.id])
+    setBooking(emptyBooking())
+  }, [service?.id, customer?.phone])
 
   if (!service) {
     return (
@@ -87,7 +84,7 @@ export default function MakeupDetailPage({ makeupCategories, serviceId, onBack, 
         paid: false,
         status: 'Chờ xác nhận',
       })
-      setBooking({ name: '', phone: '', date: '', time: '', notes: '' })
+      setBooking(emptyBooking())
       setShowBookingForm(false)
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Không thể ghi nhận lịch makeup.')

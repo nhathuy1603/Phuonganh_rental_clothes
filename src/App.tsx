@@ -8,6 +8,8 @@ import MakeupHubPage from './pages/customer/MakeupHubPage'
 import MakeupDetailPage from './pages/customer/MakeupDetailPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
+import CustomerAuthPage from './pages/customer/CustomerAuthPage'
+import AccountPage from './pages/customer/AccountPage'
 import type { CategoryGroup, MakeupCategory } from './types/catalog'
 import type { MakeupAppointment, MakeupAppointmentInput } from './types/makeup-appointment'
 import type { Product } from './types/product'
@@ -19,7 +21,7 @@ import { useTheme } from './hooks/useTheme'
 import { useScrollReveal } from './hooks/useScrollReveal'
 import { useToast } from './hooks/useToast'
 import { fetchBookingSlots, fetchCategoryTree, fetchMakeupCategories, fetchMakeupAppointments, fetchBookings, fetchProducts } from './services/catalog-service'
-import { api, ApiError, readSession, saveSession, SESSION_EXPIRED_EVENT, type AdminSession } from './services/api'
+import { api, ApiError, readSession, saveSession, SESSION_EXPIRED_EVENT, type AdminSession, type CustomerSession } from './services/api'
 import type { NavTarget, PageKey } from './types/navigation'
 import type { CartLine } from './types/cart'
 import type { BookingSlot, RentalBooking, RentalBookingInput } from './types/product'
@@ -44,7 +46,9 @@ function App() {
   const [modalProductId, setModalProductId] = useState<string | null>(null)
   const [cart, setCart] = useState<CartLine[]>([])
   const [cartOpen, setCartOpen] = useState(false)
-  const [adminSession, setAdminSession] = useState<AdminSession | null>(readSession)
+  const [adminSession, setAdminSession] = useState<AdminSession | null>(() => readSession('admin'))
+  const [customerSession, setCustomerSession] = useState<CustomerSession | null>(() => readSession('customer'))
+  const [customerNotice, setCustomerNotice] = useState<string | null>(null)
   const [loginNotice, setLoginNotice] = useState<string | null>(null)
   const [bookingSlots, setBookingSlots] = useState<BookingSlot[]>([])
   const [bookings, setBookings] = useState<RentalBooking[]>([])
@@ -113,8 +117,16 @@ function App() {
       setAdminSession(null)
       setLoginNotice('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
     }
-    window.addEventListener(SESSION_EXPIRED_EVENT, handleExpired)
-    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpired)
+    const handleCustomerExpired = () => {
+      setCustomerSession(null)
+      setCustomerNotice('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT.admin, handleExpired)
+    window.addEventListener(SESSION_EXPIRED_EVENT.customer, handleCustomerExpired)
+    return () => {
+      window.removeEventListener(SESSION_EXPIRED_EVENT.admin, handleExpired)
+      window.removeEventListener(SESSION_EXPIRED_EVENT.customer, handleCustomerExpired)
+    }
   }, [])
 
   const modalProduct = modalProductId ? products.find((product) => product.id === modalProductId) : undefined
@@ -257,17 +269,42 @@ function App() {
   }
 
   const handleLoggedIn = (session: AdminSession) => {
-    saveSession(session)
+    saveSession('admin', session)
     setAdminSession(session)
     setLoginNotice(null)
     handleNavigate({ page: 'admin' })
   }
 
   const handleLogout = () => {
-    saveSession(null)
+    saveSession('admin', null)
     setAdminSession(null)
     setLoginNotice('Bạn đã đăng xuất.')
     handleNavigate({ page: 'admin' })
+  }
+
+  const handleCustomerLoggedIn = (session: CustomerSession) => {
+    saveSession('customer', session)
+    setCustomerSession(session)
+    setCustomerNotice(null)
+    showToast(`Xin chào, ${session.customer.name}!`)
+    handleNavigate({ page: 'account' })
+  }
+
+  const handleCustomerProfileUpdated = (customer: CustomerSession['customer']) => {
+    setCustomerSession((current) => {
+      if (!current) return current
+      const next = { ...current, customer }
+      saveSession('customer', next)
+      return next
+    })
+    showToast('Đã lưu số điện thoại.')
+  }
+
+  const handleCustomerLogout = () => {
+    saveSession('customer', null)
+    setCustomerSession(null)
+    showToast('Đã đăng xuất.')
+    if (currentPage === 'account') handleNavigate({ page: 'home' })
   }
 
   const handleBackToStore = () => {
@@ -400,12 +437,12 @@ function App() {
         categoryTree={categoryTree}
         makeupCategories={makeupCategories}
         cartCount={cart.length}
-        user={null}
+        user={customerSession?.customer ?? null}
         isDark={isDark}
         onToggleTheme={toggle}
         onNavigate={handleNavigate}
         onCartClick={() => setCartOpen(true)}
-        onLogout={() => showToast('Đăng xuất (chưa làm — thuộc Phase 4)')}
+        onLogout={handleCustomerLogout}
       />}
 
       {currentPage === 'home' && (
@@ -443,8 +480,22 @@ function App() {
           serviceId={makeupDetailId ?? makeupCategories[0]?.id ?? null}
           onBack={() => handleNavigate({ page: 'makeup-hub' })}
           onBook={handleRequestMakeupAppointment}
+          customer={customerSession?.customer}
         />
       )}
+
+      {(currentPage === 'account' || currentPage === 'account-login') && (customerSession ? (
+        <AccountPage
+          customer={customerSession.customer}
+          products={products}
+          makeupServices={makeupCategories}
+          onBrowse={() => handleNavigate({ page: 'catalog', category: 'Tất cả' })}
+          onLogout={handleCustomerLogout}
+          onProfileUpdated={handleCustomerProfileUpdated}
+        />
+      ) : (
+        <CustomerAuthPage notice={customerNotice} onLoggedIn={handleCustomerLoggedIn} onOpenAdminLogin={() => handleNavigate({ page: 'login' })} />
+      ))}
 
       {isAdminArea && !adminSession && (
         <AdminLoginPage notice={loginNotice} onLoggedIn={handleLoggedIn} onBackToStore={isAdminHost && !storeUrl ? undefined : handleBackToStore} />
@@ -499,6 +550,7 @@ function App() {
           onClose={() => setCartOpen(false)}
           onRemoveLine={handleRemoveCartLine}
           onSubmitCheckout={handleSubmitCheckout}
+          customer={customerSession?.customer}
         />
       )}
 

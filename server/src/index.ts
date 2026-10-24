@@ -2,18 +2,34 @@ import { config } from './config.js'
 import { randomUUID } from 'node:crypto'
 import cors from 'cors'
 import express, { type NextFunction, type Request, type Response } from 'express'
+import { OAuth2Client, type TokenPayload } from 'google-auth-library'
 import helmet from 'helmet'
 import multer from 'multer'
 import { Prisma } from '@prisma/client'
-import { checkCredentials, clearLoginFailures, issueToken, loginRateLimit, recordLoginFailure, requireAdmin } from './auth.js'
+import {
+  checkCredentials,
+  clearLoginFailures,
+  issueCustomerToken,
+  issueToken,
+  loginRateLimit,
+  optionalCustomer,
+  recordLoginFailure,
+  requireAdmin,
+  requireCustomer,
+} from './auth.js'
 import { prisma } from './db.js'
 import { HttpError } from './errors.js'
+import { hashPassword, verifyPassword } from './password.js'
 import { deleteUnusedImages, ensureUploadDir, MAX_IMAGE_SIZE_BYTES, saveImage, UPLOAD_ROUTE } from './storage.js'
 import {
   appointmentRequestSchema,
   appointmentSchema,
   bookingSchema,
   checkoutSchema,
+  customerLoginSchema,
+  customerPhoneSchema,
+  customerRegisterSchema,
+  googleLoginSchema,
   loginSchema,
   makeupServiceSchema,
   nameSchema,
@@ -23,6 +39,10 @@ import {
 
 const app = express()
 const ACTIVE_RENTAL_STATUSES = ['Đặt trước', 'Đang thuê']
+// So khớp với hash giả khi SĐT chưa đăng ký để thời gian phản hồi không lộ SĐT nào đã có tài khoản.
+const DUMMY_PASSWORD_HASH = hashPassword(randomUUID())
+const customerFields = { id: true, name: true, phone: true, email: true } as const
+const googleClient = config.googleClientId ? new OAuth2Client(config.googleClientId) : null
 
 type ProductWithDetails = Prisma.ProductGetPayload<{
   include: { category: true; variants: true }
@@ -119,6 +139,90 @@ app.post('/api/auth/login', loginRateLimit, (req, res) => {
   res.json({ ...issueToken(username), username })
 })
 
+/* ---------- Tài khoản khách hàng ---------- */
+
+app.post('/api/customers/register', loginRateLimit, asyncRoute(async (req, res) => {
+  const { name, phone, password } = parse(customerRegisterSchema, req.body)
+  if (await prisma.customer.findUnique({ where: { phone } })) {
+    throw new HttpError(409, 'Số điện thoại này đã có tài khoản. Vui lòng đăng nhập.')
+  }
+  const customer = await prisma.customer.create({
+    data: { name, phone, passwordHash: hashPassword(password) },
+    select: customerFields,
+  })
+  res.status(201).json({ ...issueCustomerToken(customer.id), customer })
+}))
+
+app.post('/api/customers/login', loginRateLimit, asyncRoute(async (req, res) => {
+  const { phone, password } = parse(customerLoginSchema, req.body)
+  const customer = await prisma.customer.findUnique({ where: { phone } })
+  const passwordOk = verifyPassword(password, customer?.passwordHash ?? DUMMY_PASSWORD_HASH)
+  if (!customer || !passwordOk) {
+    recordLoginFailure(req.ip)
+    throw new HttpError(401, 'Sai số điện thoại hoặc mật khẩu.')
+  }
+  clearLoginFailures(req.ip)
+  const { id, name, email } = customer
+  res.json({ ...issueCustomerToken(customer.id), customer: { id, name, phone: customer.phone, email } })
+}))
+
+/** Client ID là giá trị công khai; frontend dùng để hiện nút Google (null = tắt). */
+app.get('/api/customers/google-config', (_req, res) => {
+  res.json({ clientId: config.googleClientId })
+})
+
+app.post('/api/customers/google', loginRateLimit, asyncRoute(async (req, res) => {
+  if (!googleClient || !config.googleClientId) throw new HttpError(503, 'Đăng nhập bằng Google chưa được bật.')
+  const { credential } = parse(googleLoginSchema, req.body)
+
+  let payload: TokenPayload | undefined
+  try {
+    // Kiểm tra chữ ký Google, hạn dùng và đúng Client ID của cửa hàng.
+    payload = (await googleClient.verifyIdToken({ idToken: credential, audience: config.googleClientId })).getPayload()
+  } catch {
+    payload = undefined
+  }
+  if (!payload?.sub || !payload.email_verified) {
+    recordLoginFailure(req.ip)
+    throw new HttpError(401, 'Không xác thực được tài khoản Google. Vui lòng thử lại.')
+  }
+
+  clearLoginFailures(req.ip)
+  const customer = await prisma.customer.upsert({
+    where: { googleId: payload.sub },
+    create: { googleId: payload.sub, email: payload.email ?? null, name: payload.name?.trim() || payload.email || 'Khách hàng' },
+    update: { email: payload.email ?? null },
+    select: customerFields,
+  })
+  res.json({ ...issueCustomerToken(customer.id), customer })
+}))
+
+/** Tài khoản Google chưa có SĐT: khách bổ sung để cửa hàng liên hệ và tự điền khi đặt. */
+app.put('/api/customers/me/phone', requireCustomer, asyncRoute(async (req, res) => {
+  const { phone } = parse(customerPhoneSchema, req.body)
+  const owner = await prisma.customer.findUnique({ where: { phone } })
+  if (owner && owner.id !== res.locals.customerId) {
+    throw new HttpError(409, 'Số điện thoại này đã có tài khoản khác. Hãy đăng xuất và đăng nhập bằng SĐT + mật khẩu.')
+  }
+  res.json(await prisma.customer.update({ where: { id: res.locals.customerId }, data: { phone }, select: customerFields }))
+}))
+
+app.get('/api/customers/me', requireCustomer, asyncRoute(async (_req, res) => {
+  const customer = await prisma.customer.findUnique({ where: { id: res.locals.customerId }, select: customerFields })
+  if (!customer) throw new HttpError(401, 'Tài khoản không còn tồn tại. Vui lòng đăng nhập lại.')
+  res.json(customer)
+}))
+
+/** Chỉ trả các đơn đặt lúc đã đăng nhập tài khoản này. */
+app.get('/api/customers/me/orders', requireCustomer, asyncRoute(async (_req, res) => {
+  const where = { customerId: res.locals.customerId as string }
+  const [bookings, appointments] = await Promise.all([
+    prisma.rentalBooking.findMany({ where, orderBy: { createdAt: 'desc' } }),
+    prisma.makeupAppointment.findMany({ where, orderBy: [{ date: 'desc' }, { time: 'desc' }] }),
+  ])
+  res.json({ bookings, appointments })
+}))
+
 app.get('/api/categories', asyncRoute(async (_req, res) => {
   res.json(await categoryTree())
 }))
@@ -152,7 +256,7 @@ app.get('/api/bookings/availability', asyncRoute(async (_req, res) => {
   }))
 }))
 
-app.post('/api/bookings/checkout', asyncRoute(async (req, res) => {
+app.post('/api/bookings/checkout', optionalCustomer, asyncRoute(async (req, res) => {
   const order = parse(checkoutSchema, req.body)
   const today = todayIso()
   if (order.items.some((item) => item.pickupDate < today)) {
@@ -182,6 +286,7 @@ app.post('/api/bookings/checkout', asyncRoute(async (req, res) => {
       bookings.push(await transaction.rentalBooking.create({
         data: {
           code: bookingCode(),
+          customerId: res.locals.customerId,
           customer: order.customer,
           phone: order.phone,
           productId: product.id,
@@ -204,14 +309,14 @@ app.post('/api/bookings/checkout', asyncRoute(async (req, res) => {
   res.status(201).json(created)
 }))
 
-app.post('/api/makeup-appointments/request', asyncRoute(async (req, res) => {
+app.post('/api/makeup-appointments/request', optionalCustomer, asyncRoute(async (req, res) => {
   const request = parse(appointmentRequestSchema, req.body)
   if (request.date < todayIso()) throw new HttpError(400, 'Ngày hẹn không được ở trong quá khứ.')
   const service = await prisma.makeupService.findUnique({ where: { id: request.serviceId } })
   if (!service) throw new HttpError(400, 'Dịch vụ makeup không tồn tại.')
 
   const appointment = await prisma.makeupAppointment.create({
-    data: { ...request, amount: service.priceFrom, status: 'Chờ xác nhận' },
+    data: { ...request, customerId: res.locals.customerId, amount: service.priceFrom, status: 'Chờ xác nhận' },
   })
   res.status(201).json(appointment)
 }))

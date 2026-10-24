@@ -10,6 +10,8 @@ export type NavTarget =
   | { page: 'makeup-hub' }
   | { page: 'makeup-detail'; id: string }
   | { page: 'login' }
+  | { page: 'account-login' }
+  | { page: 'account' }
   | { page: 'admin' }
 
 export type PageKey = NavTarget['page']

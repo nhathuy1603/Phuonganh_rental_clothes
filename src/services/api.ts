@@ -1,8 +1,16 @@
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000').replace(/\/$/, '')
 
-const TOKEN_KEY = 'pa-admin-session'
-/** Phát ra khi API trả 401 để App đưa admin về màn đăng nhập. */
-export const SESSION_EXPIRED_EVENT = 'pa:session-expired'
+export type SessionKind = 'admin' | 'customer'
+
+const SESSION_KEYS: Record<SessionKind, string> = {
+  admin: 'pa-admin-session',
+  customer: 'pa-customer-session',
+}
+/** Phát ra khi API trả 401 để App đưa người dùng về màn đăng nhập tương ứng. */
+export const SESSION_EXPIRED_EVENT: Record<SessionKind, string> = {
+  admin: 'pa:session-expired',
+  customer: 'pa:customer-session-expired',
+}
 
 export interface AdminSession {
   token: string
@@ -10,19 +18,35 @@ export interface AdminSession {
   expiresAt: string
 }
 
-export function readSession(): AdminSession | null {
+export interface CustomerProfile {
+  id: string
+  name: string
+  /** Tài khoản Google có thể chưa bổ sung SĐT. */
+  phone: string | null
+  email: string | null
+}
+
+export interface CustomerSession {
+  token: string
+  expiresAt: string
+  customer: CustomerProfile
+}
+
+type SessionOf<K extends SessionKind> = K extends 'admin' ? AdminSession : CustomerSession
+
+export function readSession<K extends SessionKind = 'admin'>(kind: K = 'admin' as K): SessionOf<K> | null {
   try {
-    const session = JSON.parse(localStorage.getItem(TOKEN_KEY) ?? 'null') as AdminSession | null
+    const session = JSON.parse(localStorage.getItem(SESSION_KEYS[kind]) ?? 'null') as SessionOf<K> | null
     return session && Date.parse(session.expiresAt) > Date.now() ? session : null
   } catch {
     return null
   }
 }
 
-export function saveSession(session: AdminSession | null) {
+export function saveSession<K extends SessionKind>(kind: K, session: SessionOf<K> | null) {
   try {
-    if (session) localStorage.setItem(TOKEN_KEY, JSON.stringify(session))
-    else localStorage.removeItem(TOKEN_KEY)
+    if (session) localStorage.setItem(SESSION_KEYS[kind], JSON.stringify(session))
+    else localStorage.removeItem(SESSION_KEYS[kind])
   } catch {
     // Trình duyệt chặn localStorage: phiên chỉ sống tới khi tải lại trang.
   }
@@ -37,8 +61,14 @@ export class ApiError extends Error {
   }
 }
 
+/** API phía khách (tài khoản, đặt đơn) dùng token khách; còn lại dùng token admin. */
+function sessionKindFor(path: string): SessionKind {
+  return /^\/api\/(customers|bookings\/checkout|makeup-appointments\/request)/.test(path) ? 'customer' : 'admin'
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = readSession()?.token
+  const kind = sessionKindFor(path)
+  const token = readSession(kind)?.token
   let response: Response
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
@@ -56,8 +86,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string } | null
     if (response.status === 401 && token) {
-      saveSession(null)
-      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+      saveSession(kind, null)
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT[kind]))
     }
     throw new ApiError(response.status, body?.message ?? `Yêu cầu thất bại (${response.status}).`)
   }
