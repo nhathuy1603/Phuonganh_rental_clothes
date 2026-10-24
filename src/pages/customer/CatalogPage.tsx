@@ -35,3 +35,4 @@ export default function CatalogPage({ activeCategory, categories, products, onSe
     </>
   )
 }
+

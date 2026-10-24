@@ -49,6 +49,9 @@ export interface RentalBooking {
 
 export type RentalBookingInput = Omit<RentalBooking, 'id' | 'code'>
 
+/** Phần lịch thuê công khai, đủ để tính còn hàng mà không lộ thông tin khách. */
+export type BookingSlot = Pick<RentalBooking, 'id' | 'productId' | 'variantId' | 'pickupDate' | 'dueDate' | 'status'>
+
 export interface Review {
   name: string
   item: string

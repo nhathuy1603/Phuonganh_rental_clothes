@@ -5,29 +5,38 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "prisma generate && tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev --name init",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:makeup": "tsx prisma/seed-makeup.ts",
-    "db:setup": "prisma migrate dev --name init && tsx prisma/seed.ts"
+    "db:setup": "prisma migrate dev --name init && tsx prisma/seed.ts",
+    "start:prod": "prisma migrate deploy && node dist/index.js",
+    "admin:hash": "tsx scripts/hash-password.ts",
+    "images:migrate": "tsx scripts/migrate-images.ts",
+    "images:clean": "tsx scripts/clean-uploads.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
-    "multer": "^1.4.5-lts.1"
+    "helmet": "^8.0.0",
+    "multer": "^1.4.5-lts.1",
+    "prisma": "^6.19.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.5",
     "@types/express": "^4.17.21",
     "@types/multer": "^1.4.5",
     "@types/node": "^22.10.2",
-    "prisma": "^6.19.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type MouseEvent } from 'react'
 import type { Product } from '../../types/product'
 import type { CartLine } from '../../types/cart'
-import type { RentalBooking } from '../../types/product'
+import type { BookingSlot } from '../../types/product'
 import { money } from '../../utils/format'
 import { rentalDays, TODAY_ISO } from '../../utils/dates'
 import { availableForRange } from '../../services/booking-service'
@@ -10,7 +10,7 @@ import ProductVisual from '../common/ProductVisual'
 interface ProductModalProps {
   product: Product
   products: Product[]
-  bookings: RentalBooking[]
+  bookings: BookingSlot[]
   onClose: () => void
   onAddToCart: (line: CartLine) => void
 }

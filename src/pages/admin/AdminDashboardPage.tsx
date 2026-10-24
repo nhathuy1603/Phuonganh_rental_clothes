@@ -14,6 +14,8 @@ import AdminProductsPage from './AdminProductsPage'
 type AdminSection = 'overview' | 'bookings' | 'inventory' | 'finance' | 'categories' | 'makeup-calendar' | 'makeup-services'
 
 interface AdminDashboardPageProps {
+  adminName: string
+  onLogout: () => void
   bookings: RentalBooking[]
   onCreateRentalBooking: (booking: RentalBookingInput) => void
   onUpdateRentalBooking: (id: string, booking: RentalBookingInput) => void
@@ -51,6 +53,8 @@ const sections: { id: AdminSection; icon: string; label: string }[] = [
 ]
 
 export default function AdminDashboardPage({
+  adminName,
+  onLogout,
   bookings,
   onCreateRentalBooking,
   onUpdateRentalBooking,
@@ -122,6 +126,7 @@ export default function AdminDashboardPage({
         </nav>
         <div className="side-foot">
           <a href="#store" onClick={(event) => { event.preventDefault(); onBackToStore() }}>← Quay lại cửa hàng</a>
+          <button type="button" className="admin-logout-button" onClick={onLogout}>Đăng xuất</button>
         </div>
       </aside>
 
@@ -134,7 +139,7 @@ export default function AdminDashboardPage({
             <h1>{sections.find((item) => item.id === section)?.label}</h1>
             <p>Không gian quản lý cửa hàng Phương Anh</p>
           </div>
-          <div className="admin-preview-tag">BẢN XEM TRƯỚC · DỮ LIỆU MẪU</div>
+          <div className="admin-preview-tag">Đăng nhập: {adminName}</div>
         </header>
 
         {section === 'overview' && (

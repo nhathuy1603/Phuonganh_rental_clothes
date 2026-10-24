@@ -14,6 +14,8 @@
 .side-link.active{background:var(--gold);color:#fff;font-weight:700;}
 .side-foot{margin-top:auto;padding-top:16px;border-top:1px solid rgba(255,255,255,.12);}
 .side-foot a{display:block;font-size:12.5px;color:#B7A6B2;padding:8px 12px;}
+.side-foot .admin-logout-button{display:block;width:100%;border:0;background:none;text-align:left;font:inherit;font-size:12.5px;color:#B7A6B2;padding:8px 12px;cursor:pointer;}
+.side-foot .admin-logout-button:hover{color:#fff;}
 .admin-main{flex:1;padding:30px 36px 60px;max-width:calc(100% - 236px);}
 .admin-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;flex-wrap:wrap;gap:14px;}
 .admin-top h1{font-size:25px;margin:0 0 4px;}

@@ -1,59 +1,50 @@
 import type { CategoryGroup, MakeupCategory } from '../types/catalog'
 import type { MakeupAppointment } from '../types/makeup-appointment'
-import type { Product, ProductVariant, RentalBooking, Review, Differentiator } from '../types/product'
-import { defaultCategoryTree, makeupCategories, products, bookings, makeupAppointments, REVIEWS, DIFFS } from '../data/seed-data'
+import type { BookingSlot, Product, ProductVariant, RentalBooking, Review, Differentiator } from '../types/product'
+import { defaultCategoryTree, makeupCategories, products, bookings, REVIEWS, DIFFS } from '../data/seed-data'
 import { api } from './api'
 
 /**
  * Lớp truy cập dữ liệu danh mục. UI CHỈ gọi các hàm ở đây, không import seed-data trực tiếp.
- * Hiện trả dữ liệu mẫu đồng bộ; Phase 3 sẽ đổi thân hàm thành gọi API (async) mà không ảnh hưởng UI.
+ * Các hàm fetch* gọi API; chỉ khi chạy dev mới dùng dữ liệu mẫu nếu API lỗi,
+ * còn production báo lỗi thật để không hiển thị sản phẩm giả cho khách.
  */
+async function withDevFallback<T>(load: Promise<T>, sample: () => T): Promise<T> {
+  try {
+    return await load
+  } catch (error) {
+    if (!import.meta.env.DEV) throw error
+    return sample()
+  }
+}
+
 export function getCategoryTree(): CategoryGroup[] {
   return defaultCategoryTree()
 }
 
-export async function fetchCategoryTree(): Promise<CategoryGroup[]> {
-  try {
-    return await api.get<CategoryGroup[]>('/api/categories')
-  } catch {
-    return defaultCategoryTree()
-  }
+export function fetchCategoryTree(): Promise<CategoryGroup[]> {
+  return withDevFallback(api.get<CategoryGroup[]>('/api/categories'), defaultCategoryTree)
 }
 
 export function getMakeupCategories(): MakeupCategory[] {
   return makeupCategories
 }
 
-export async function fetchMakeupCategories(): Promise<MakeupCategory[]> {
-  try {
-    return await api.get<MakeupCategory[]>('/api/makeup-services')
-  } catch {
-    return makeupCategories
-  }
+export function fetchMakeupCategories(): Promise<MakeupCategory[]> {
+  return withDevFallback(api.get<MakeupCategory[]>('/api/makeup-services'), () => makeupCategories)
 }
 
-export function getMakeupAppointments(): MakeupAppointment[] {
-  return makeupAppointments
-}
-
-export async function fetchMakeupAppointments(): Promise<MakeupAppointment[]> {
-  try {
-    return await api.get<MakeupAppointment[]>('/api/makeup-appointments')
-  } catch {
-    return makeupAppointments
-  }
+/** Chỉ admin đã đăng nhập mới gọi được. */
+export function fetchMakeupAppointments(): Promise<MakeupAppointment[]> {
+  return api.get<MakeupAppointment[]>('/api/makeup-appointments')
 }
 
 export function getProducts(): Product[] {
   return products
 }
 
-export async function fetchProducts(): Promise<Product[]> {
-  try {
-    return await api.get<Product[]>('/api/products')
-  } catch {
-    return products
-  }
+export function fetchProducts(): Promise<Product[]> {
+  return withDevFallback(api.get<Product[]>('/api/products'), () => products)
 }
 
 export function findProduct(id: string): Product | undefined {
@@ -91,16 +82,14 @@ export function getProductsForCategory(
   return kids ? productList.filter((p) => kids.includes(p.category)) : productList.filter((p) => p.category === active)
 }
 
-export function getBookings(): RentalBooking[] {
-  return bookings
+/** Lịch giữ đồ công khai (không có thông tin khách) để kiểm tra còn hàng. */
+export function fetchBookingSlots(): Promise<BookingSlot[]> {
+  return withDevFallback(api.get<BookingSlot[]>('/api/bookings/availability'), () => bookings)
 }
 
-export async function fetchBookings(): Promise<RentalBooking[]> {
-  try {
-    return await api.get<RentalBooking[]>('/api/bookings')
-  } catch {
-    return bookings
-  }
+/** Chỉ admin đã đăng nhập mới gọi được. */
+export function fetchBookings(): Promise<RentalBooking[]> {
+  return api.get<RentalBooking[]>('/api/bookings')
 }
 
 /** Port nguyên từ mostRentedProducts() gốc — xếp hạng sản phẩm theo số lượt đặt. */

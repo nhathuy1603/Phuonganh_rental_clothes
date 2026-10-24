@@ -7,6 +7,7 @@ import ContactPage from './pages/customer/ContactPage'
 import MakeupHubPage from './pages/customer/MakeupHubPage'
 import MakeupDetailPage from './pages/customer/MakeupDetailPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
+import AdminLoginPage from './pages/admin/AdminLoginPage'
 import type { CategoryGroup, MakeupCategory } from './types/catalog'
 import type { MakeupAppointment, MakeupAppointmentInput } from './types/makeup-appointment'
 import type { Product } from './types/product'
@@ -17,30 +18,36 @@ import FloatingContactActions from './components/common/FloatingContactActions'
 import { useTheme } from './hooks/useTheme'
 import { useScrollReveal } from './hooks/useScrollReveal'
 import { useToast } from './hooks/useToast'
-import { getCategoryTree, getMakeupCategories, getMakeupAppointments, getBookings, getProducts, fetchCategoryTree, fetchMakeupCategories, fetchMakeupAppointments, fetchBookings, fetchProducts } from './services/catalog-service'
-import { createBookingsFromCart } from './services/booking-service'
-import { api } from './services/api'
+import { fetchBookingSlots, fetchCategoryTree, fetchMakeupCategories, fetchMakeupAppointments, fetchBookings, fetchProducts } from './services/catalog-service'
+import { api, ApiError, readSession, saveSession, SESSION_EXPIRED_EVENT, type AdminSession } from './services/api'
 import type { NavTarget, PageKey } from './types/navigation'
 import type { CartLine } from './types/cart'
-import type { RentalBooking, RentalBookingInput } from './types/product'
+import type { BookingSlot, RentalBooking, RentalBookingInput } from './types/product'
+
+/** admin.<domain> mở thẳng trang quản trị; domain chính là storefront. */
+const isAdminHost = window.location.hostname.startsWith('admin.')
+const storeUrl = import.meta.env.VITE_STORE_URL
 
 /**
  * APP SHELL (Phase 2c-2): thêm Product Modal + Giỏ hàng + Checkout thật.
  * `cart` và `bookings` là state ở đây (thay cho STATE.cart / STATE.data.bookings toàn cục
  * của bản gốc) — UI con chỉ nhận qua props, không đụng trực tiếp vào state này.
+ * `bookingSlots` là lịch giữ đồ công khai cho khách; `bookings` đầy đủ chỉ tải khi admin đã đăng nhập.
  */
 function App() {
   const { isDark, toggle } = useTheme()
   const { toastMessage, showToast } = useToast()
 
-  const [currentPage, setCurrentPage] = useState<PageKey>('home')
+  const [currentPage, setCurrentPage] = useState<PageKey>(isAdminHost ? 'admin' : 'home')
   const [activeCategory, setActiveCategory] = useState('Tất cả')
   const [makeupDetailId, setMakeupDetailId] = useState<string | null>(null)
   const [modalProductId, setModalProductId] = useState<string | null>(null)
   const [cart, setCart] = useState<CartLine[]>([])
   const [cartOpen, setCartOpen] = useState(false)
+  const [adminSession, setAdminSession] = useState<AdminSession | null>(readSession)
+  const [loginNotice, setLoginNotice] = useState<string | null>(null)
+  const [bookingSlots, setBookingSlots] = useState<BookingSlot[]>([])
   const [bookings, setBookings] = useState<RentalBooking[]>([])
-  const [nextBookingSeq, setNextBookingSeq] = useState(16)
   const [categoryTree, setCategoryTree] = useState<CategoryGroup[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [makeupAppointments, setMakeupAppointments] = useState<MakeupAppointment[]>([])
@@ -51,11 +58,10 @@ function App() {
 
     const loadData = async () => {
       try {
-        const [categories, productList, bookingsList, appointmentList, serviceList] = await Promise.all([
+        const [categories, productList, slots, serviceList] = await Promise.all([
           fetchCategoryTree(),
           fetchProducts(),
-          fetchBookings(),
-          fetchMakeupAppointments(),
+          fetchBookingSlots(),
           fetchMakeupCategories(),
         ])
 
@@ -63,18 +69,11 @@ function App() {
 
         setCategoryTree(categories)
         setProducts(productList)
-        setBookings(bookingsList)
-        setMakeupAppointments(appointmentList)
+        setBookingSlots(slots)
         setMakeupCategories(serviceList)
-        setNextBookingSeq(Math.max(16, bookingsList.length + 16))
-      } catch {
+      } catch (error) {
         if (!isMounted) return
-        setCategoryTree(getCategoryTree())
-        setProducts(getProducts())
-        setBookings(getBookings())
-        setMakeupAppointments(getMakeupAppointments())
-        setMakeupCategories(getMakeupCategories())
-        setNextBookingSeq(16)
+        showToast(error instanceof Error ? error.message : 'Không tải được dữ liệu cửa hàng.')
       }
     }
 
@@ -84,7 +83,43 @@ function App() {
     }
   }, [])
 
+  // Dữ liệu có thông tin khách (đơn thuê, lịch makeup) chỉ tải sau khi admin đăng nhập.
+  useEffect(() => {
+    if (!adminSession) {
+      setBookings([])
+      setMakeupAppointments([])
+      return
+    }
+
+    let isMounted = true
+    void Promise.all([fetchBookings(), fetchMakeupAppointments()])
+      .then(([bookingList, appointmentList]) => {
+        if (!isMounted) return
+        setBookings(bookingList)
+        setMakeupAppointments(appointmentList)
+      })
+      .catch((error: unknown) => {
+        // 401 đã được màn đăng nhập báo, không cần toast trùng.
+        if (!isMounted || (error instanceof ApiError && error.status === 401)) return
+        showToast(error instanceof Error ? error.message : 'Không tải được dữ liệu quản trị.')
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [adminSession])
+
+  useEffect(() => {
+    const handleExpired = () => {
+      setAdminSession(null)
+      setLoginNotice('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleExpired)
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpired)
+  }, [])
+
   const modalProduct = modalProductId ? products.find((product) => product.id === modalProductId) : undefined
+  // Khi admin đã đăng nhập, dùng danh sách đơn đầy đủ (mới nhất) để tính còn hàng.
+  const availabilityBookings: BookingSlot[] = adminSession ? bookings : bookingSlots
 
   const handleNavigate = (target: NavTarget) => {
     setCurrentPage(target.page)
@@ -117,10 +152,14 @@ function App() {
     }
 
     try {
-      const bookingDrafts = createBookingsFromCart(cart, name, phone, depositType, nextBookingSeq)
-      const createdBookings = await api.post<RentalBooking[]>('/api/bookings/bulk', bookingDrafts)
-      setBookings((current) => [...current, ...createdBookings])
-      setNextBookingSeq((sequence) => sequence + createdBookings.length)
+      const createdBookings = await api.post<RentalBooking[]>('/api/bookings/checkout', {
+        customer: name,
+        phone,
+        depositType,
+        items: cart.map(({ productId, variantId, pickupDate, dueDate }) => ({ productId, variantId, pickupDate, dueDate })),
+      })
+      setBookingSlots((current) => [...current, ...createdBookings])
+      if (adminSession) setBookings((current) => [...current, ...createdBookings])
       setCart([])
       setCartOpen(false)
       showToast('Đặt thuê thành công! Chúng tôi sẽ liên hệ xác nhận sớm.')
@@ -133,7 +172,6 @@ function App() {
     try {
       const created = await api.post<RentalBooking>('/api/bookings', booking)
       setBookings((current) => [...current, created])
-      setNextBookingSeq((current) => current + 1)
       showToast('Đã tạo đơn thuê.')
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Không thể tạo đơn thuê.')
@@ -204,6 +242,37 @@ function App() {
       showToast(error instanceof Error ? error.message : 'Không thể ghi nhận lịch makeup.')
       throw error
     }
+  }
+
+  /** Khách tự đặt lịch: server tự lấy giá dịch vụ và đặt trạng thái "Chờ xác nhận". */
+  const handleRequestMakeupAppointment = async ({ customer, phone, serviceId, date, time, notes }: MakeupAppointmentInput) => {
+    try {
+      const created = await api.post<MakeupAppointment>('/api/makeup-appointments/request', { customer, phone, serviceId, date, time, notes })
+      if (adminSession) setMakeupAppointments((current) => [...current, created])
+      showToast('Đã ghi nhận lịch makeup. Cửa hàng sẽ liên hệ xác nhận.')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể ghi nhận lịch makeup.')
+      throw error
+    }
+  }
+
+  const handleLoggedIn = (session: AdminSession) => {
+    saveSession(session)
+    setAdminSession(session)
+    setLoginNotice(null)
+    handleNavigate({ page: 'admin' })
+  }
+
+  const handleLogout = () => {
+    saveSession(null)
+    setAdminSession(null)
+    setLoginNotice('Bạn đã đăng xuất.')
+    handleNavigate({ page: 'admin' })
+  }
+
+  const handleBackToStore = () => {
+    if (isAdminHost && storeUrl) window.location.href = storeUrl
+    else handleNavigate({ page: 'home' })
   }
 
   const handleUpdateMakeupAppointment = async (id: string, appointment: MakeupAppointmentInput) => {
@@ -322,9 +391,11 @@ function App() {
   // Chạy lại việc quan sát .reveal mỗi khi đổi trang/danh mục — giống initScrollReveal() gốc
   useScrollReveal([currentPage, activeCategory])
 
+  const isAdminArea = currentPage === 'admin' || currentPage === 'login'
+
   return (
     <>
-      {currentPage !== 'admin' && <Header
+      {!isAdminArea && <Header
         currentPage={currentPage}
         categoryTree={categoryTree}
         makeupCategories={makeupCategories}
@@ -371,12 +442,18 @@ function App() {
           makeupCategories={makeupCategories}
           serviceId={makeupDetailId ?? makeupCategories[0]?.id ?? null}
           onBack={() => handleNavigate({ page: 'makeup-hub' })}
-          onBook={handleCreateMakeupAppointment}
+          onBook={handleRequestMakeupAppointment}
         />
       )}
 
-      {currentPage === 'admin' && (
+      {isAdminArea && !adminSession && (
+        <AdminLoginPage notice={loginNotice} onLoggedIn={handleLoggedIn} onBackToStore={isAdminHost && !storeUrl ? undefined : handleBackToStore} />
+      )}
+
+      {isAdminArea && adminSession && (
         <AdminDashboardPage
+          adminName={adminSession.username}
+          onLogout={handleLogout}
           bookings={bookings}
           onCreateRentalBooking={handleCreateRentalBooking}
           onUpdateRentalBooking={handleUpdateRentalBooking}
@@ -400,32 +477,17 @@ function App() {
           onAddCategory={handleAddCategory}
           onRenameCategory={handleRenameCategory}
           onDeleteCategory={handleDeleteCategory}
-          onBackToStore={() => handleNavigate({ page: 'home' })}
+          onBackToStore={handleBackToStore}
         />
       )}
 
-      {currentPage === 'login' && (
-        <section className="wrap" style={{ paddingTop: '60px', paddingBottom: '80px', minHeight: '45vh' }}>
-          <div className="eyebrow-plain">Khu vực quản trị</div>
-          <h1 className="serif" style={{ fontSize: '26px', margin: '0 0 14px' }}>
-            Đăng nhập quản trị
-          </h1>
-          <p style={{ maxWidth: '520px', color: 'var(--ink-soft)', lineHeight: 1.7 }}>
-            Xác thực admin chưa được kết nối. Bạn có thể mở bản xem trước giao diện bằng dữ liệu mẫu bên dưới.
-          </p>
-          <button type="button" className="btn btn-primary" onClick={() => handleNavigate({ page: 'admin' })}>
-            Xem trang quản trị
-          </button>
-        </section>
-      )}
-
-      {currentPage !== 'admin' && <Footer />}
+      {!isAdminArea && <Footer />}
 
       {modalProduct && (
         <ProductModal
           product={modalProduct}
           products={products}
-          bookings={bookings}
+          bookings={availabilityBookings}
           onClose={() => setModalProductId(null)}
           onAddToCart={handleAddToCart}
         />
@@ -440,7 +502,7 @@ function App() {
         />
       )}
 
-      {currentPage !== 'admin' && <FloatingContactActions />}
+      {!isAdminArea && <FloatingContactActions />}
       <Toast message={toastMessage} />
     </>
   )

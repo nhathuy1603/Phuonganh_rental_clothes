@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type ChangeEvent, type FormEvent } from 'react'
 import type { MakeupCategory } from '../../types/catalog'
+import { uploadImages } from '../../services/image-upload'
 
 interface AdminMakeupServicesPageProps {
   services: MakeupCategory[]
@@ -28,10 +29,13 @@ export default function AdminMakeupServicesPage({ services, onCreate, onUpdate, 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState<MakeupServiceDraft>(() => serviceDraft())
   const [formOpen, setFormOpen] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   const openCreate = () => {
     setEditingId(null)
     setDraft(serviceDraft())
+    setImageError(null)
     setFormOpen(true)
   }
 
@@ -39,7 +43,21 @@ export default function AdminMakeupServicesPage({ services, onCreate, onUpdate, 
     const { id: _id, ...values } = service
     setEditingId(service.id)
     setDraft({ ...values, highlightsText: service.highlights.join('\n') })
+    setImageError(null)
     setFormOpen(true)
+  }
+
+  const handleImages = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    if (files.length === 0) return
+
+    setImageError(null)
+    setUploading(true)
+    const { urls, error } = await uploadImages(files)
+    setUploading(false)
+    setDraft((current) => ({ ...current, images: [...current.images, ...urls] }))
+    setImageError(error)
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -98,7 +116,12 @@ export default function AdminMakeupServicesPage({ services, onCreate, onUpdate, 
               <label>Thời lượng<input value={draft.duration} onChange={(event) => updateDraft('duration', event.target.value)} placeholder="60 - 90 phút" required /></label>
               <label className="admin-form-wide">Mô tả dịch vụ<textarea rows={4} value={draft.desc} onChange={(event) => updateDraft('desc', event.target.value)} required /></label>
               <label className="admin-form-wide">Điểm nổi bật (mỗi dòng một mục)<textarea rows={4} value={draft.highlightsText} onChange={(event) => updateDraft('highlightsText', event.target.value)} /></label>
-              <div className="admin-appointment-actions"><button type="button" className="btn btn-ghost" onClick={() => setFormOpen(false)}>Huỷ</button><button type="submit" className="btn btn-primary makeup-book-btn">Lưu dịch vụ</button></div>
+              <div className="admin-form-wide">
+                <div className="admin-product-variant-head"><div><h3>Ảnh dịch vụ</h3><p>{uploading ? 'Đang tải ảnh lên…' : 'Mỗi ảnh tối đa 5MB, tự thu gọn trước khi tải lên.'}</p></div><label className="btn btn-ghost btn-sm admin-product-upload" aria-disabled={uploading}>+ Thêm ảnh<input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleImages} disabled={uploading} /></label></div>
+                {imageError && <p className="admin-date-error" role="alert">{imageError}</p>}
+                {draft.images.length > 0 ? <div className="admin-product-image-list">{draft.images.map((image, index) => <figure key={image}><img src={image} alt={`Ảnh dịch vụ ${index + 1}`} /><button type="button" aria-label={`Xóa ảnh ${index + 1}`} onClick={() => updateDraft('images', draft.images.filter((_, imageIndex) => imageIndex !== index))}>×</button></figure>)}</div> : <p className="admin-product-no-images">Chưa có ảnh. Trang khách sẽ hiển thị ảnh minh hoạ mặc định.</p>}
+              </div>
+              <div className="admin-appointment-actions"><button type="button" className="btn btn-ghost" onClick={() => setFormOpen(false)}>Huỷ</button><button type="submit" className="btn btn-primary makeup-book-btn" disabled={uploading}>Lưu dịch vụ</button></div>
             </form>
           </section>
         </div>

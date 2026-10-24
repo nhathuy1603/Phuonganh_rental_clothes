@@ -8,15 +8,16 @@ REST API for the Phương Anh rental clothes storefront, backed by PostgreSQL th
 - `npm run db:generate`
 - `npm run dev`
 - `npm run build`
-- `npm start`
+- `npm start` (or `npm run start:prod` to apply migrations first)
 
 ## Local database
 
 1. Start PostgreSQL with Docker Compose from this directory: `docker compose -f compose.yaml up -d`.
 2. Copy `.env.example` to `.env`.
 3. Run `npm install` and `npm run db:generate`.
-4. Run `npm run db:setup` to create the schema and load the starter catalog.
-5. Start the API with `npm run dev`.
+4. Create the admin login: `npm run admin:hash -- "your-password"` and paste the printed line into `.env`. Set `AUTH_SECRET` to a random string.
+5. Run `npm run db:setup` to create the schema and load the starter catalog.
+6. Start the API with `npm run dev`.
 
 `DATABASE_URL` can also point to a PostgreSQL instance hosted elsewhere. Keep `.env` private.
 
@@ -27,4 +28,28 @@ REST API for the Phương Anh rental clothes storefront, backed by PostgreSQL th
 - `npm run db:seed` safely inserts or updates the starter records.
 - `npm run db:seed:makeup` restores missing default makeup services without changing existing services.
 
-The API persists product variants, categories, rental bookings, makeup services, and makeup appointments. Image upload still validates files up to 5MB but does not store image files. CORS defaults to the Vite frontend on port 5173.
+## Admin authentication
+
+There is one admin account, configured through `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH` (scrypt). `POST /api/auth/login` returns a signed token valid for `ADMIN_SESSION_HOURS`; the admin UI sends it as `Authorization: Bearer <token>`. Changing `AUTH_SECRET` logs every admin out. After 10 failed logins from one IP, login is locked for 15 minutes.
+
+Public routes (no login): `GET /api/categories`, `GET /api/products`, `GET /api/makeup-services`, `GET /api/bookings/availability` (dates only, no customer data), `POST /api/bookings/checkout`, `POST /api/makeup-appointments/request`. Every other `/api` route requires the admin token.
+
+Customer checkout and makeup requests only accept the customer's choices; prices, deposits and status are computed on the server, and checkout refuses dates that are already fully booked.
+
+## Images
+
+`POST /api/admin/upload-image` accepts JPG, PNG or WebP up to 5MB (checked against the file content, not only the browser's mimetype), saves it to `UPLOAD_DIR` and returns its public URL under `PUBLIC_API_URL/uploads/`. When a product or makeup service drops an image, or is deleted, the file is removed once nothing else uses it.
+
+- `npm run images:migrate` converts old base64 images stored in the database into files. Safe to run more than once.
+- `npm run images:clean` deletes uploaded files older than one day that no product or service uses (for example an upload followed by Cancel). Run it occasionally or from a cron job.
+
+## Production
+
+1. Copy `.env.production.example` and fill in every value. The server refuses to start in production without `AUTH_SECRET` (32+ characters) and `ADMIN_PASSWORD_HASH`.
+2. Build with `npm run build`, then start with `npm run start:prod`, which applies migrations before starting. Or build the `Dockerfile` in this directory.
+3. Mount persistent storage at `UPLOAD_DIR` (default `/data/uploads` in Docker). Without a persistent disk, uploaded images are lost on every redeploy.
+4. Set `TRUST_PROXY=true` behind Nginx, Render or Railway so the login rate limit sees real client IPs.
+
+Suggested domains: storefront `phuonganhthuedodanang.com`, admin `admin.phuonganhthuedodanang.com` (the same frontend build opens the dashboard directly on an `admin.` host), API `api.phuonganhthuedodanang.com`. List both frontend origins in `CORS_ORIGINS`.
+
+Frontend environment (Vercel/Netlify): `VITE_API_BASE_URL=https://api.phuonganhthuedodanang.com`, and on the admin site `VITE_STORE_URL=https://phuonganhthuedodanang.com`.

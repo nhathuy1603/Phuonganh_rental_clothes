@@ -3,6 +3,7 @@ import type { CategoryGroup } from '../../types/catalog'
 import type { Product, ProductVariant } from '../../types/product'
 import ProductVisual from '../../components/common/ProductVisual'
 import { availableNow } from '../../services/catalog-service'
+import { uploadImages } from '../../services/image-upload'
 import { money } from '../../utils/format'
 
 interface AdminProductsPageProps {
@@ -24,7 +25,6 @@ const productIcons: Array<{ id: Product['icon']; label: string }> = [
 ]
 
 const palette = ['#7A2233', '#22314F', '#5C8C82', '#B4863C', '#6B6660', '#8C2A2A', '#C9A85C', '#D9AFAE']
-const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
 
 function emptyVariant(): ProductVariant {
   return { id: `variant-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`, size: '', color: '', total: 1, renting: 0, cleaning: 0, repair: 0 }
@@ -63,32 +63,6 @@ function productToDraft(product: Product): ProductDraft {
   }
 }
 
-function resizeImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onerror = () => reject(new Error('Không thể đọc ảnh đã chọn.'))
-    reader.onload = () => {
-      const image = new Image()
-      image.onerror = () => reject(new Error('File đã chọn không phải ảnh hợp lệ.'))
-      image.onload = () => {
-        const scale = Math.min(1, 1200 / Math.max(image.width, image.height))
-        const canvas = document.createElement('canvas')
-        canvas.width = Math.max(1, Math.round(image.width * scale))
-        canvas.height = Math.max(1, Math.round(image.height * scale))
-        const context = canvas.getContext('2d')
-        if (!context) {
-          reject(new Error('Trình duyệt không hỗ trợ xử lý ảnh.'))
-          return
-        }
-        context.drawImage(image, 0, 0, canvas.width, canvas.height)
-        resolve(canvas.toDataURL('image/jpeg', 0.84))
-      }
-      image.src = String(reader.result)
-    }
-    reader.readAsDataURL(file)
-  })
-}
-
 export default function AdminProductsPage({ products, categories, onCreate, onUpdate, onDelete }: AdminProductsPageProps) {
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('Tất cả')
@@ -97,6 +71,7 @@ export default function AdminProductsPage({ products, categories, onCreate, onUp
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState<ProductDraft>(() => emptyProduct(categories))
   const [imageError, setImageError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   const categoryOptions = useMemo(() => [...new Set(categories.flatMap((group) => group.items))], [categories])
   const selectedProduct = products.find((product) => product.id === detailId)
@@ -150,22 +125,12 @@ export default function AdminProductsPage({ products, categories, onCreate, onUp
     event.target.value = ''
     if (files.length === 0) return
 
-    const oversizedFiles = files.filter((file) => file.size > MAX_IMAGE_SIZE_BYTES)
-    const validFiles = files.filter((file) => file.size <= MAX_IMAGE_SIZE_BYTES)
-
-    if (oversizedFiles.length > 0) {
-      setImageError(`Ảnh vượt quá 5MB: ${oversizedFiles.map((file) => file.name).join(', ')}. Vui lòng chọn ảnh nhỏ hơn 5MB.`)
-    }
-
-    if (validFiles.length === 0) return
-
-    try {
-      const images = await Promise.all(validFiles.map(resizeImage))
-      setDraft((current) => ({ ...current, images: [...current.images, ...images] }))
-      setImageError((current) => current && oversizedFiles.length > 0 ? current : null)
-    } catch (error) {
-      setImageError(error instanceof Error ? error.message : 'Không thể tải ảnh.')
-    }
+    setImageError(null)
+    setUploading(true)
+    const { urls, error } = await uploadImages(files)
+    setUploading(false)
+    setDraft((current) => ({ ...current, images: [...current.images, ...urls] }))
+    setImageError(error)
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -289,12 +254,12 @@ export default function AdminProductsPage({ products, categories, onCreate, onUp
                 </div>
               </section>
               <section className="admin-product-media admin-product-wide">
-                <div className="admin-product-variant-head"><div><h3>Ảnh sản phẩm</h3><p>Ảnh được thu gọn kích thước để xem trước nhanh.</p></div><label className="btn btn-ghost btn-sm admin-product-upload">+ Thêm ảnh<input type="file" accept="image/*" multiple onChange={handleImages} /></label></div>
+                <div className="admin-product-variant-head"><div><h3>Ảnh sản phẩm</h3><p>{uploading ? 'Đang tải ảnh lên…' : 'Mỗi ảnh tối đa 5MB, tự thu gọn trước khi tải lên.'}</p></div><label className="btn btn-ghost btn-sm admin-product-upload" aria-disabled={uploading}>+ Thêm ảnh<input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleImages} disabled={uploading} /></label></div>
                 {imageError && <p className="admin-date-error" role="alert">{imageError}</p>}
                 {draft.images.length > 0 ? <div className="admin-product-image-list">{draft.images.map((image, index) => <figure key={`${index}-${image.slice(0, 24)}`}><img src={image} alt={`Ảnh sản phẩm ${index + 1}`} /><button type="button" aria-label={`Xóa ảnh ${index + 1}`} onClick={() => updateDraft('images', draft.images.filter((_, imageIndex) => imageIndex !== index))}>×</button></figure>)}</div> : <p className="admin-product-no-images">Chưa có ảnh sản phẩm.</p>}
               </section>
               <label className="admin-product-wide">Video sản phẩm<input type="url" value={draft.videoUrl} onChange={(event) => updateDraft('videoUrl', event.target.value)} placeholder="https://youtube.com/... hoặc link video" /></label>
-              <footer className="admin-product-form-actions"><button type="button" className="btn btn-ghost" onClick={() => setFormOpen(false)}>Hủy</button><button type="submit" className="btn btn-primary">{editingId ? 'Lưu sản phẩm' : 'Tạo sản phẩm'}</button></footer>
+              <footer className="admin-product-form-actions"><button type="button" className="btn btn-ghost" onClick={() => setFormOpen(false)}>Hủy</button><button type="submit" className="btn btn-primary" disabled={uploading}>{editingId ? 'Lưu sản phẩm' : 'Tạo sản phẩm'}</button></footer>
             </form>
           </section>
         </div>
